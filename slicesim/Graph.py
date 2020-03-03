@@ -40,6 +40,38 @@ class Graph:
         self.draw_map()
         self.draw_stats(*stats)
 
+    def draw_stations_own_slice(self, connection_matrix, slice_name):
+        """
+        Draws only base stations having a particular slice and puts a line
+        between the centers if any two of them are neighbour.
+        :param connection_matrix:   Connection matrix from ConnectionUtils for a single slice.
+        :param slice_name:          Slices to be connected
+        """
+        self.ax = plt.subplot(self.gs[:, 0])
+        xlims, ylims = self.map_limits
+        self.ax.set_xlim(xlims)
+        self.ax.set_ylim(ylims)
+        self.ax.yaxis.set_major_formatter(FormatStrFormatter('%.0f m'))
+        self.ax.xaxis.set_major_formatter(FormatStrFormatter('%.0f m'))
+        self.ax.set_aspect('equal')
+
+        connection_lines = {}
+        for bs in self.base_stations:
+            if bs.has_slice(slice_name):
+                circle = plt.Circle(bs.coverage.center, bs.coverage.radius,
+                    fill=False, linewidth=2, alpha=0.9, color=bs.color)
+                self.ax.add_artist(circle)
+                connection_lines[bs.pk] = [i for i, x in enumerate(connection_matrix[bs.pk]) if x == 1 and i > bs.pk]
+
+        for src, dest in connection_lines.items():
+            for target in dest:
+                x = [self.base_stations[src].coverage.center[0], self.base_stations[target].coverage.center[0]]
+                y = [self.base_stations[src].coverage.center[1], self.base_stations[target].coverage.center[1]]
+                self.ax.add_line(plt.Line2D(x, y))
+
+        box = self.ax.get_position()
+        self.ax.set_position([box.x0 - box.width * 0.05, box.y0 + box.height * 0.1, box.width, box.height * 0.9])
+
     def draw_map(self):
         markers = ['o', 's', 'p', 'P', '*', 'H', 'X', 'D', 'v', '^', '<', '>', '1', '2', '3', '4']
         self.ax = plt.subplot(self.gs[:, 0])
