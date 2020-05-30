@@ -3,7 +3,7 @@ import random
 
 from .utils import distance, KDTree
 
-HAND_OFF_THRESHOLD = -0.1
+HAND_OFF_THRESHOLD = 0.1
 
 
 class Client:
@@ -61,6 +61,11 @@ class Client:
 
         # .25: Stats
 
+        if self.get_slice():
+            prev_load = self.get_slice().get_load()
+        else:
+            prev_load = -1
+
         yield self.env.timeout(0.25)
 
         # .50: Release
@@ -82,8 +87,8 @@ class Client:
             if not self.base_station.coverage.is_in_coverage(self.x, self.y):
                 self.disconnect()
                 self.assign_closest_base_station(exclude=[self.base_station.pk])
-            elif self.should_handoff():
-                self.handoff()
+            elif self.should_handover(prev_load):
+                self.handover()
         else:
             self.assign_closest_base_station()
 
@@ -91,18 +96,19 @@ class Client:
 
         yield self.env.process(self.iter())
 
-    def should_handoff(self):
+    def should_handover(self, load):
         st = self.get_closest_base_stations(exclude=[self.base_station.pk])
-        filter(lambda x: x[0] <= x[1].coverage.radius, st)
+        st = [x for x in st if x[0] <= x[1].coverage.radius]
         # st contains the available stations in the range now.
         # if it's empty, then handover is not available for this client.
-        return self.get_slice().get_load() >= HAND_OFF_THRESHOLD and len(st) is not 0
+        print("LOAD:", load, "for BS:", self.base_station.pk, "for Slice:", self.get_slice().name)
+        return load >= HAND_OFF_THRESHOLD and len(st) is not 0
 
-    def handoff(self):
-        print(f'[{int(self.env.now)}] Client_{self.pk} [{self.x}, {self.y}] handing off from slice: '
-              f'{self.get_slice()}.')
+    def handover(self):
+        old_pk = self.base_station.pk
         self.disconnect()
         self.assign_closest_base_station(exclude=[self.base_station.pk])
+        print(f'[{int(self.env.now)}] Client_{self.pk} [{self.x}, {self.y}] handed off from {old_pk} to {self.base_station.pk if self.base_station is not None else None}')
 
     def get_slice(self):
         if self.base_station is None:
