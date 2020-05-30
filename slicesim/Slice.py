@@ -1,8 +1,11 @@
+import simpy
+
+
 class Slice:
     def __init__(self, name, ratio,
                  connected_users, user_share, delay_tolerance, qos_class,
                  bandwidth_guaranteed, bandwidth_max, init_capacity,
-                 usage_pattern):
+                 usage_pattern, env):
         self.name = name
         self.connected_users = connected_users
         self.user_share = user_share
@@ -12,7 +15,7 @@ class Slice:
         self.bandwidth_guaranteed = bandwidth_guaranteed
         self.bandwidth_max = bandwidth_max
         self.init_capacity = init_capacity
-        self.capacity = 0
+        self.capacity = simpy.Container(env, init=init_capacity, capacity=init_capacity)
         self.usage_pattern = usage_pattern
     
     def get_consumable_share(self):
@@ -21,12 +24,16 @@ class Slice:
         else:
             return min(self.init_capacity/self.connected_users, self.bandwidth_max)
 
-    def is_avaliable(self):
+    def is_available(self):
         real_cap = min(self.init_capacity, self.bandwidth_max)
         bandwidth_next = real_cap / (self.connected_users + 1)
         if bandwidth_next < self.bandwidth_guaranteed:
             return False
         return True
 
+    def get_load(self):
+        return (1 - self.capacity.level) / self.capacity.capacity
+
     def __str__(self):
-        return f'{self.name:<10} init={self.init_capacity:<5} cap={self.capacity.level:<5} diff={(self.init_capacity - self.capacity.level):<5}'
+        return f'{self.name:<10} init={self.init_capacity:<5} cap={self.capacity.level:<5}' \
+               f' diff={(self.init_capacity - self.capacity.level):<5} '

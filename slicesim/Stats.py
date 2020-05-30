@@ -4,7 +4,7 @@ class Stats:
         self.base_stations = base_stations
         self.clients = clients
         self.area = area
-        #self.graph = graph
+        # self.graph = graph
 
         # Stats
         self.total_connected_users_ratio = []
@@ -15,7 +15,7 @@ class Stats:
         self.connect_attempt = []
         self.block_count = []
         self.handover_count = []
-    
+
     def get_stats(self):
         return (
             self.total_connected_users_ratio,
@@ -56,7 +56,7 @@ class Stats:
         # for bs in self.base_stations:
         #     for sl in bs.slices:
         #         t += sl.connected_users
-        return t/cc if cc != 0 else 0
+        return t / cc if cc != 0 else 0
 
     def get_total_used_bw(self):
         t = 0
@@ -71,9 +71,9 @@ class Stats:
             for sl in bs.slices:
                 c += sl.capacity.capacity
                 t += sl.capacity.capacity - sl.capacity.level
-                #c += 1
-                #t += (sl.capacity.capacity - sl.capacity.level) / sl.capacity.capacity
-        return t/c if c !=0 else 0
+                # c += 1
+                # t += (sl.capacity.capacity - sl.capacity.level) / sl.capacity.capacity
+        return t / c if c != 0 else 0
 
     def get_avg_slice_client_count(self):
         t, c = 0, 0
@@ -81,8 +81,8 @@ class Stats:
             for sl in bs.slices:
                 c += 1
                 t += sl.connected_users
-        return t/c if c !=0 else 0
-    
+        return t / c if c != 0 else 0
+
     def get_coverage_ratio(self):
         t, cc = 0, 0
         for c in self.clients:
@@ -90,7 +90,7 @@ class Stats:
                 cc += 1
                 if c.base_station is not None and c.base_station.coverage.is_in_coverage(c.x, c.y):
                     t += 1
-        return t/cc if cc !=0 else 0
+        return t / cc if cc != 0 else 0
 
     def incr_connect_attempt(self, client):
         if self.is_client_in_coverage(client):
@@ -107,4 +107,3 @@ class Stats:
     def is_client_in_coverage(self, client):
         xs, ys = self.area
         return True if xs[0] <= client.x <= xs[1] and ys[0] <= client.y <= ys[1] else False
-        

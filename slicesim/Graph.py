@@ -9,6 +9,10 @@ import randomcolor
 from .utils import format_bps
 
 
+def show_plot():
+    plt.show()
+
+
 class Graph:
     def __init__(self, base_stations, clients, xlim, map_limits,
                  output_dpi=500, scatter_size=15, output_filename='output.png'):
@@ -19,7 +23,7 @@ class Graph:
         self.map_limits = map_limits
         self.output_dpi = output_dpi
         self.scatter_size = scatter_size
-        self.fig = plt.figure(figsize=(16,9))
+        self.fig = plt.figure(figsize=(16, 9))
         self.fig.canvas.set_window_title('Network Slicing Simulation')
 
         self.gs = gridspec.GridSpec(4, 3, width_ratios=[6, 3, 3])
@@ -59,7 +63,7 @@ class Graph:
         for bs in self.base_stations:
             if bs.has_slice(slice_name):
                 circle = plt.Circle(bs.coverage.center, bs.coverage.radius,
-                    fill=False, linewidth=2, alpha=0.9, color=bs.color)
+                                    fill=False, linewidth=2, alpha=0.9, color=bs.color)
                 self.ax.add_artist(circle)
                 connection_lines[bs.pk] = [i for i, x in enumerate(connection_matrix[bs.pk]) if x == 1 and i > bs.pk]
 
@@ -81,13 +85,13 @@ class Graph:
         self.ax.yaxis.set_major_formatter(FormatStrFormatter('%.0f m'))
         self.ax.xaxis.set_major_formatter(FormatStrFormatter('%.0f m'))
         self.ax.set_aspect('equal')
-        
+
         # base stations
         for bs in self.base_stations:
             circle = plt.Circle(bs.coverage.center, bs.coverage.radius,
                                 fill=False, linewidth=2, alpha=0.9, color=bs.color)
             self.ax.add_artist(circle)
-        
+
         # clients
         legend_indexed = []
         for c in self.clients:
@@ -185,7 +189,7 @@ class Graph:
             [f'{mean(vals5[l:r]):.4f}'],
             [f'{mean(vals6[l:r]):.4f}'],
         ]
-        
+
         self.ax8.axis('off')
         self.ax8.axis('tight')
         self.ax8.tick_params(axis='x', which='major', pad=15)
@@ -196,14 +200,11 @@ class Graph:
     def save_fig(self):
         self.fig.savefig(self.output_filename, dpi=1000)
 
-    def show_plot(self):
-        plt.show()
-
     def get_map_limits(self):
         # deprecated
-        x_min = min([bs.coverage.center[0]-bs.coverage.radius for bs in self.base_stations])
-        x_max = max([bs.coverage.center[0]+bs.coverage.radius for bs in self.base_stations])
-        y_min = min([bs.coverage.center[1]-bs.coverage.radius for bs in self.base_stations])
-        y_max = max([bs.coverage.center[1]+bs.coverage.radius for bs in self.base_stations])
+        x_min = min([bs.coverage.center[0] - bs.coverage.radius for bs in self.base_stations])
+        x_max = max([bs.coverage.center[0] + bs.coverage.radius for bs in self.base_stations])
+        y_min = min([bs.coverage.center[1] - bs.coverage.radius for bs in self.base_stations])
+        y_max = max([bs.coverage.center[1] + bs.coverage.radius for bs in self.base_stations])
 
         return (x_min, x_max), (y_min, y_max)
