@@ -32,7 +32,7 @@ class Slice:
         return True
 
     def get_load(self):
-        return (1 - self.capacity.level) / self.capacity.capacity
+        return 1 - (self.capacity.level / self.capacity.capacity)
 
     def __str__(self):
         return f'{self.name:<10} init={self.init_capacity:<5} cap={self.capacity.level:<5}' \

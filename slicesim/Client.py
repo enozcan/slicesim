@@ -3,6 +3,8 @@ import random
 
 from .utils import distance, KDTree
 
+HAND_OFF_THRESHOLD = -0.1
+
 
 class Client:
     def __init__(self, pk, env, x, y, mobility_pattern,
@@ -80,12 +82,27 @@ class Client:
             if not self.base_station.coverage.is_in_coverage(self.x, self.y):
                 self.disconnect()
                 self.assign_closest_base_station(exclude=[self.base_station.pk])
+            elif self.should_handoff():
+                self.handoff()
         else:
             self.assign_closest_base_station()
 
         yield self.env.timeout(0.25)
 
         yield self.env.process(self.iter())
+
+    def should_handoff(self):
+        st = self.get_closest_base_stations(exclude=[self.base_station.pk])
+        filter(lambda x: x[0] <= x[1].coverage.radius, st)
+        # st contains the available stations in the range now.
+        # if it's empty, then handover is not available for this client.
+        return self.get_slice().get_load() >= HAND_OFF_THRESHOLD and len(st) is not 0
+
+    def handoff(self):
+        print(f'[{int(self.env.now)}] Client_{self.pk} [{self.x}, {self.y}] handing off from slice: '
+              f'{self.get_slice()}.')
+        self.disconnect()
+        self.assign_closest_base_station(exclude=[self.base_station.pk])
 
     def get_slice(self):
         if self.base_station is None:
@@ -115,7 +132,7 @@ class Client:
             return True
         else:
             self.assign_closest_base_station(exclude=[self.base_station.pk])
-            if self.base_station is not None and self.get_slice().is_avaliable():
+            if self.base_station is not None and self.get_slice().is_available():
                 # handover
                 self.stat_collector.incr_handover_count(self)
             elif self.base_station is not None:
@@ -164,14 +181,8 @@ class Client:
 
     # Check closest base_stations of a client and assign the closest non-excluded available base_station to the client.
     def assign_closest_base_station(self, exclude=None):
-        updated_list = []
-        for d, b in self.closest_base_stations:
-            if exclude is not None and b.pk in exclude:
-                continue
-            d = distance((self.x, self.y), (b.coverage.center[0], b.coverage.center[1]))
-            updated_list.append((d, b))
-        updated_list.sort(key=operator.itemgetter(0))
-        for d, b in updated_list:
+        stations = self.get_closest_base_stations(exclude)
+        for d, b in stations:
             if d <= b.coverage.radius:
                 self.base_station = b
                 print(f'[{int(self.env.now)}] Client_{self.pk} freshly assigned to {self.base_station}')
@@ -179,6 +190,16 @@ class Client:
         if KDTree.last_run_time is not int(self.env.now):
             KDTree.run(self.stat_collector.clients, self.stat_collector.base_stations, int(self.env.now), assign=False)
         self.base_station = None
+
+    def get_closest_base_stations(self, exclude=None):
+        updated_list = []
+        for d, b in self.closest_base_stations:
+            if exclude is not None and b.pk in exclude:
+                continue
+            d = distance((self.x, self.y), (b.coverage.center[0], b.coverage.center[1]))
+            updated_list.append((d, b))
+        updated_list.sort(key=operator.itemgetter(0))
+        return updated_list
 
     def __str__(self):
         return f'Client_{self.pk} [{self.x:<5}, {self.y:>5}] connected to: slice={self.get_slice()} ' \

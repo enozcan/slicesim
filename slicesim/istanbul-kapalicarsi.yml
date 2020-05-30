@@ -1,6 +1,6 @@
 settings:
-  simulation_time: 20
-  num_clients: 10
+  simulation_time: 50
+  num_clients: 1
   limit_closest_base_stations: 5
   statistics_params:
     warmup_ratio: 0.05
@@ -14,8 +14,8 @@ settings:
   logging: True
   log_file: output.txt
   plotting_params:
-    plotting: True
-    plot_save: True
+    plotting: False
+    plot_save: False
     plot_show: False
     plot_file: output.png
     plot_file_dpi: 1000
