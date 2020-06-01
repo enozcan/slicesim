@@ -4,6 +4,7 @@ import numpy as np
 from .utils import distance, KDTree
 
 HAND_OFF_THRESHOLD = 0.1
+PER_SLICE_THRESHOLD = 0.2
 
 
 class Client:
@@ -35,6 +36,37 @@ class Client:
         self.action = env.process(self.iter())
         # print(self.usage_freq)
 
+    def assign_optimal_base_station(self):
+        old_load = self.get_slice().get_load() if self.base_station is not None else -1
+        inside = self.base_station is not None and self.base_station.coverage.is_in_coverage(self.x, self.y)
+        if inside and self.get_slice().get_load() < PER_SLICE_THRESHOLD:
+            print(f'[{int(self.env.now)}] Client_{self.pk} continues to be assigned to {self.base_station}')
+            return
+
+        if self.connected:
+            print(f'[{int(self.env.now)}] Client_{self.pk} disconnecting...')
+            self.disconnect()
+
+        st = self.get_closest_base_stations(exclude=[self.base_station.pk] if self.base_station is not None else [])
+        st = [x for x in st if x[0] <= x[1].coverage.radius]
+        st.sort(key=lambda x: x[1].slices[self.subscribed_slice_index].get_load())
+        # TODO: Set limit for min load
+
+        if len(st) > 0:
+            if self.base_station is None:
+                print(f'[{int(self.env.now)}] Client_{self.pk} assigned to {self.base_station} when was None')
+            else:
+                print(f'[{int(self.env.now)}] Client_{self.pk} assigned to {st[0][1]} after handover, inside? {inside}')
+            self.base_station = st[0][1]
+            new_load = self.get_slice().get_load()
+            print(f'[{int(self.env.now)}] Client_{self.pk} old load was {old_load}, new load is {new_load}')
+            return
+
+        if KDTree.last_run_time is not int(self.env.now):
+            KDTree.run(self.stat_collector.clients, self.stat_collector.base_stations, int(self.env.now), assign=False)
+        print(f'[{int(self.env.now)}] Client_{self.pk} could not assigned to any base station')
+        self.base_station = None
+
     def iter(self):
         """
         There are four steps in a cycle:
@@ -45,6 +77,8 @@ class Client:
         """
 
         # .00: Lock
+        self.assign_optimal_base_station()
+
         if self.base_station is not None:
             if self.usage_remaining > 0:
                 if self.connected:
@@ -82,7 +116,7 @@ class Client:
         x, y = self.mobility_pattern.generate_movement()
         self.x += x
         self.y += y
-
+        """
         if self.base_station is not None:
             if not self.base_station.coverage.is_in_coverage(self.x, self.y):
                 self.disconnect()
@@ -91,6 +125,7 @@ class Client:
                 self.handover()
         else:
             self.assign_closest_base_station()
+        """
 
         yield self.env.timeout(0.25)
 
@@ -141,6 +176,7 @@ class Client:
                 f' @ {self.base_station}')
             return True
         else:
+            """
             self.assign_closest_base_station(exclude=[self.base_station.pk])
             if self.base_station is not None and self.get_slice().is_available():
                 # handover
@@ -150,6 +186,8 @@ class Client:
                 self.stat_collector.incr_block_count(self)
             else:
                 pass  # uncovered
+            """
+            self.stat_collector.incr_block_count(self)
             print(
                 f'[{int(self.env.now)}] Client_{self.pk} [{self.x}, {self.y}] connection refused to '
                 f'slice={self.get_slice()} @ {self.base_station}')
