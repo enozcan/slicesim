@@ -39,7 +39,15 @@ class Client:
     def assign_optimal_base_station(self):
         old_load = self.get_slice().get_load() if self.base_station is not None else -1
         inside = self.base_station is not None and self.base_station.coverage.is_in_coverage(self.x, self.y)
-        if inside and self.get_slice().get_load() < PER_SLICE_THRESHOLD:
+
+        st = self.get_closest_base_stations(exclude=[self.base_station.pk] if self.base_station is not None else [])
+        st = [x for x in st if x[0] <= x[1].coverage.radius]
+        st.sort(key=lambda x: x[1].slices[self.subscribed_slice_index].get_load())
+
+        if inside and \
+                (old_load < PER_SLICE_THRESHOLD or
+                 (len(st) > 0 and st[0][1].slices[self.subscribed_slice_index].get_load() > (old_load - 0.05))):
+            # TODO: convert this printout to comment
             print(f'[{int(self.env.now)}] Client_{self.pk} continues to be assigned to {self.base_station}')
             return
 
@@ -47,24 +55,27 @@ class Client:
             print(f'[{int(self.env.now)}] Client_{self.pk} disconnecting...')
             self.disconnect()
 
-        st = self.get_closest_base_stations(exclude=[self.base_station.pk] if self.base_station is not None else [])
-        st = [x for x in st if x[0] <= x[1].coverage.radius]
-        st.sort(key=lambda x: x[1].slices[self.subscribed_slice_index].get_load())
-        # TODO: Set limit for min load
-
         if len(st) > 0:
             if self.base_station is None:
-                print(f'[{int(self.env.now)}] Client_{self.pk} assigned to {self.base_station} when was None')
+                self.base_station = st[0][1]
+                print(f'[{int(self.env.now)}] Client_{self.pk} freshly assigned to {self.base_station}')
             else:
+                self.base_station = st[0][1]
                 print(f'[{int(self.env.now)}] Client_{self.pk} assigned to {st[0][1]} after handover, inside? {inside}')
-            self.base_station = st[0][1]
+                self.stat_collector.incr_handover_count(self)
             new_load = self.get_slice().get_load()
+
+            # DEBUG PRINTOUT
             print(f'[{int(self.env.now)}] Client_{self.pk} old load was {old_load}, new load is {new_load}')
             return
 
         if KDTree.last_run_time is not int(self.env.now):
             KDTree.run(self.stat_collector.clients, self.stat_collector.base_stations, int(self.env.now), assign=False)
+        # TODO: Investigate the reason for printing this for all clients at the time 0.
         print(f'[{int(self.env.now)}] Client_{self.pk} could not assigned to any base station')
+
+        if self.base_station is not None:
+            self.stat_collector.incr_block_count(self)
         self.base_station = None
 
     def iter(self):
@@ -94,11 +105,6 @@ class Client:
         yield self.env.timeout(0.25)
 
         # .25: Stats
-
-        if self.get_slice():
-            prev_load = self.get_slice().get_load()
-        else:
-            prev_load = -1
 
         yield self.env.timeout(0.25)
 
@@ -147,7 +153,8 @@ class Client:
         old_pk = self.base_station.pk
         self.disconnect()
         self.assign_closest_base_station(exclude=[self.base_station.pk])
-        print(f'[{int(self.env.now)}] Client_{self.pk} [{self.x}, {self.y}] handed off from {old_pk} to {self.base_station.pk if self.base_station is not None else None}')
+        print(
+            f'[{int(self.env.now)}] Client_{self.pk} [{self.x}, {self.y}] handed off from {old_pk} to {self.base_station.pk if self.base_station is not None else None}')
 
     def get_slice(self):
         if self.base_station is None:
@@ -212,7 +219,6 @@ class Client:
         amount = min(s.get_consumable_share(), self.usage_remaining)
         # Allocate resource and consume ongoing usage with given bandwidth
         s.capacity.get(amount)
-        print("Load of the slice:", s.get_load())
         print(f'[{int(self.env.now)}] Client_{self.pk} [{self.x}, {self.y}] gets {amount} usage.')
         self.last_usage = amount
 

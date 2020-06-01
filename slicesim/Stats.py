@@ -73,6 +73,7 @@ class Stats:
                 t += sl.capacity.capacity - sl.capacity.level
                 # c += 1
                 # t += (sl.capacity.capacity - sl.capacity.level) / sl.capacity.capacity
+                print("~~~", self.env.now, "Base Station:", bs.pk, "Slice:", sl, "Load:", sl.get_load())
         return t / c if c != 0 else 0
 
     def get_avg_slice_client_count(self):
