@@ -1,6 +1,6 @@
 import operator
 import random
-
+import numpy as np
 from .utils import distance, KDTree
 
 HAND_OFF_THRESHOLD = 0.1
@@ -102,7 +102,11 @@ class Client:
         # st contains the available stations in the range now.
         # if it's empty, then handover is not available for this client.
         print("LOAD:", load, "for BS:", self.base_station.pk, "for Slice:", self.get_slice().name)
-        return load >= HAND_OFF_THRESHOLD and len(st) is not 0
+        if load >= HAND_OFF_THRESHOLD and len(st) is not 0:
+            if np.random.random(1)[0] > ((1.0 * load - HAND_OFF_THRESHOLD) / load):
+                return True
+            else:
+                return False
 
     def handover(self):
         old_pk = self.base_station.pk
