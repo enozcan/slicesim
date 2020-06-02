@@ -4,7 +4,7 @@ import numpy as np
 from .utils import distance, KDTree
 
 HAND_OFF_THRESHOLD = 0.1
-PER_SLICE_THRESHOLD = 0.2
+PER_SLICE_THRESHOLD = 0.75
 
 
 class Client:
@@ -45,8 +45,8 @@ class Client:
         st.sort(key=lambda x: x[1].slices[self.subscribed_slice_index].get_load())
 
         if inside and \
-                (old_load < PER_SLICE_THRESHOLD or
-                 (len(st) > 0 and st[0][1].slices[self.subscribed_slice_index].get_load() > (old_load - 0.05))):
+                (old_load < PER_SLICE_THRESHOLD or len(st) == 0 or
+                 (st[0][1].slices[self.subscribed_slice_index].get_load() > (old_load - 0.05))):
             # TODO: convert this printout to comment
             print(f'[{int(self.env.now)}] Client_{self.pk} continues to be assigned to {self.base_station}')
             return

@@ -135,3 +135,4 @@ class Stats:
             print("BS:", bs)
             for slice_name, load_list in slice_meta.items():
                 print(slice_name, "loads mean:", np.mean(load_list))
+        print("Drop mean:", np.mean(self.drop_count))
