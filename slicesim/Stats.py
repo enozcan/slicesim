@@ -15,8 +15,10 @@ class Stats:
         self.connect_attempt = []
         self.block_count = []
         self.handover_count = []
+        self.drop_count = []
 
     def get_stats(self):
+        print("@@@-", self.avg_slice_load_ratio, self.total_connected_users_ratio)
         return (
             self.total_connected_users_ratio,
             self.total_used_bw,
@@ -32,9 +34,12 @@ class Stats:
         self.connect_attempt.append(0)
         self.block_count.append(0)
         self.handover_count.append(0)
+        self.drop_count.append(0)
+
         while True:
             self.block_count[-1] /= self.connect_attempt[-1] if self.connect_attempt[-1] != 0 else 1
             self.handover_count[-1] /= self.connect_attempt[-1] if self.connect_attempt[-1] != 0 else 1
+            self.drop_count[-1] /= self.connect_attempt[-1] if self.connect_attempt[-1] != 0 else 1
 
             self.total_connected_users_ratio.append(self.get_total_connected_users_ratio())
             self.total_used_bw.append(self.get_total_used_bw())
@@ -45,6 +50,8 @@ class Stats:
             self.connect_attempt.append(0)
             self.block_count.append(0)
             self.handover_count.append(0)
+            self.drop_count.append(0)
+
             yield self.env.timeout(1)
 
     def get_total_connected_users_ratio(self):
@@ -96,6 +103,10 @@ class Stats:
     def incr_connect_attempt(self, client):
         if self.is_client_in_coverage(client):
             self.connect_attempt[-1] += 1
+
+    def incr_drop_count(self, client):
+        if self.is_client_in_coverage(client):
+            self.drop_count[-1] += 1
 
     def incr_block_count(self, client):
         if self.is_client_in_coverage(client):

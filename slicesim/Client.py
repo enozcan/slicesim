@@ -75,7 +75,7 @@ class Client:
         print(f'[{int(self.env.now)}] Client_{self.pk} could not assigned to any base station')
 
         if self.base_station is not None:
-            self.stat_collector.incr_block_count(self)
+            self.stat_collector.incr_drop_count(self)
         self.base_station = None
 
     def iter(self):
