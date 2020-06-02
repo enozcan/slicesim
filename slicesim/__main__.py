@@ -162,6 +162,8 @@ for client in clients:
 
 print(stats.get_stats())
 
+stats.print_load_stats()
+
 if SETTINGS['plotting_params']['plotting']:
     xlim_left = int(SETTINGS['simulation_time'] * SETTINGS['statistics_params']['warmup_ratio'])
     xlim_right = int(SETTINGS['simulation_time'] * (1 - SETTINGS['statistics_params']['cooldown_ratio'])) + 1

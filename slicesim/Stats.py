@@ -1,3 +1,5 @@
+import numpy as np
+
 class Stats:
     def __init__(self, env, base_stations, clients, area):
         self.env = env
@@ -17,8 +19,13 @@ class Stats:
         self.handover_count = []
         self.drop_count = []
 
+        self.load_stats = {}
+        for bs in self.base_stations:
+            self.load_stats[bs.pk] = {}
+            for sl in bs.slices:
+                self.load_stats[bs.pk][sl.name] = []
+
     def get_stats(self):
-        print("@@@-", self.avg_slice_load_ratio, self.total_connected_users_ratio)
         return (
             self.total_connected_users_ratio,
             self.total_used_bw,
@@ -39,7 +46,9 @@ class Stats:
         while True:
             self.block_count[-1] /= self.connect_attempt[-1] if self.connect_attempt[-1] != 0 else 1
             self.handover_count[-1] /= self.connect_attempt[-1] if self.connect_attempt[-1] != 0 else 1
-            self.drop_count[-1] /= self.connect_attempt[-1] if self.connect_attempt[-1] != 0 else 1
+
+            # TODO: Rename this since it happens when a client goes outside of the covered region.
+            self.drop_count[-1] /= (self.connect_attempt[-1] + self.drop_count[-1]) if self.connect_attempt[-1] != 0 else 1
 
             self.total_connected_users_ratio.append(self.get_total_connected_users_ratio())
             self.total_used_bw.append(self.get_total_used_bw())
@@ -80,7 +89,7 @@ class Stats:
                 t += sl.capacity.capacity - sl.capacity.level
                 # c += 1
                 # t += (sl.capacity.capacity - sl.capacity.level) / sl.capacity.capacity
-                print("~~~", self.env.now, "Base Station:", bs.pk, "Slice:", sl, "Load:", sl.get_load())
+                self.load_stats[bs.pk][sl.name].append(sl.get_load())
         return t / c if c != 0 else 0
 
     def get_avg_slice_client_count(self):
@@ -119,3 +128,10 @@ class Stats:
     def is_client_in_coverage(self, client):
         xs, ys = self.area
         return True if xs[0] <= client.x <= xs[1] and ys[0] <= client.y <= ys[1] else False
+
+    def print_load_stats(self):
+        print("--Slice load statistics--")
+        for bs, slice_meta in self.load_stats.items():
+            print("BS:", bs)
+            for slice_name, load_list in slice_meta.items():
+                print(slice_name, "loads mean:", np.mean(load_list))
