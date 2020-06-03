@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class Stats:
     def __init__(self, env, base_stations, clients, area):
         self.env = env
@@ -15,9 +16,13 @@ class Stats:
         self.avg_slice_client_count = []
         self.coverage_ratio = []
         self.connect_attempt = []
+
+        # Block count -> the client requests for a resource but
+        # the resource is not allocated due to unavailable
         self.block_count = []
+
         self.handover_count = []
-        self.drop_count = []
+        self.out_of_coverage_count = []
 
         self.load_stats = {}
         for bs in self.base_stations:
@@ -41,14 +46,15 @@ class Stats:
         self.connect_attempt.append(0)
         self.block_count.append(0)
         self.handover_count.append(0)
-        self.drop_count.append(0)
+        self.out_of_coverage_count.append(0)
 
         while True:
             self.block_count[-1] /= self.connect_attempt[-1] if self.connect_attempt[-1] != 0 else 1
             self.handover_count[-1] /= self.connect_attempt[-1] if self.connect_attempt[-1] != 0 else 1
 
             # TODO: Rename this since it happens when a client goes outside of the covered region.
-            self.drop_count[-1] /= (self.connect_attempt[-1] + self.drop_count[-1]) if self.connect_attempt[-1] != 0 else 1
+            self.out_of_coverage_count[-1] /= (self.connect_attempt[-1] + self.out_of_coverage_count[-1]) if \
+                self.connect_attempt[-1] != 0 else 1
 
             self.total_connected_users_ratio.append(self.get_total_connected_users_ratio())
             self.total_used_bw.append(self.get_total_used_bw())
@@ -59,7 +65,7 @@ class Stats:
             self.connect_attempt.append(0)
             self.block_count.append(0)
             self.handover_count.append(0)
-            self.drop_count.append(0)
+            self.out_of_coverage_count.append(0)
 
             yield self.env.timeout(1)
 
@@ -113,9 +119,9 @@ class Stats:
         if self.is_client_in_coverage(client):
             self.connect_attempt[-1] += 1
 
-    def incr_drop_count(self, client):
+    def incr_out_of_coverage_count(self, client):
         if self.is_client_in_coverage(client):
-            self.drop_count[-1] += 1
+            self.out_of_coverage_count[-1] += 1
 
     def incr_block_count(self, client):
         if self.is_client_in_coverage(client):
@@ -135,7 +141,7 @@ class Stats:
             print("BS:", bs)
             for slice_name, load_list in slice_meta.items():
                 print(slice_name, "loads mean:", np.mean(load_list))
-        print("Drop mean:", np.mean(self.drop_count))
+        print("Out of coverage mean:", np.mean(self.out_of_coverage_count))
         print("Handover mean:", np.mean(self.handover_count))
         print("Block mean:", np.mean(self.block_count))
 

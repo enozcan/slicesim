@@ -5,6 +5,7 @@ from .utils import distance, KDTree
 
 HAND_OFF_THRESHOLD = 0.1
 PER_SLICE_THRESHOLD = 0.75
+HAND_OVER_LOAD_MARGIN = 0.05
 
 
 class Client:
@@ -45,9 +46,8 @@ class Client:
         st.sort(key=lambda x: x[1].slices[self.subscribed_slice_index].get_load())
 
         if inside and \
-                (old_load < PER_SLICE_THRESHOLD or len(st) == 0 or
-                 (st[0][1].slices[self.subscribed_slice_index].get_load() > (old_load - 0.05))):
-            # TODO: convert this printout to comment
+                (len(st) == 0 or old_load < PER_SLICE_THRESHOLD or
+                 (st[0][1].slices[self.subscribed_slice_index].get_load() > (old_load - HAND_OVER_LOAD_MARGIN))):
             print(f'[{int(self.env.now)}] Client_{self.pk} continues to be assigned to {self.base_station}')
             return
 
@@ -73,9 +73,8 @@ class Client:
             KDTree.run(self.stat_collector.clients, self.stat_collector.base_stations, int(self.env.now), assign=False)
         # TODO: Investigate the reason for printing this for all clients at the time 0.
         print(f'[{int(self.env.now)}] Client_{self.pk} could not assigned to any base station')
-
         if self.base_station is not None:
-            self.stat_collector.incr_drop_count(self)
+            self.stat_collector.incr_out_of_coverage_count(self)
         self.base_station = None
 
     def iter(self):
