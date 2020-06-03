@@ -138,7 +138,9 @@ class Stats:
 
     def print_general_stats(self):
         print('-' * 20, "General Stats", '-' * 20)
-        p = lambda header, stats: print(f'[{header}] Mean: {np.mean(stats)}, Dev: {np.std(stats)}, Series: {stats}')
+        r = lambda stats: [f'{elem:.4f}' for elem in stats]
+        p = lambda header, stats: print(f'[{header}] Mean: {np.mean(stats):.4f}, Dev: {np.std(stats):.4f}, '
+                                        f'Series: {r(stats)}')
         p("Total Connected Users\t", self.total_connected_users_ratio)
         p("Total Bandwidth Used\t", self.total_used_bw)
         p("Avg Slice Load Ratio\t", self.avg_slice_load_ratio)
@@ -155,7 +157,8 @@ class Stats:
         for bs, slice_meta in self.load_stats.items():
             print('-' * 10, "BS:", bs, '-' * 10)
             for slice_name, load_list in slice_meta.items():
-                print(f'[{slice_name}]\t Mean: {np.mean(load_list)}, Dev: {np.std(load_list)}, Values: {load_list}')
+                res = [f'{elem:.2f}' for elem in load_list]
+                print(f'[{slice_name}]\t Mean: {np.mean(load_list):.4f}, Dev: {np.std(load_list):.4f}, Values: {res}')
         print('-' * 60)
 
     def print_per_slice_stats(self):
@@ -165,5 +168,6 @@ class Stats:
             for slice_name, load_list in slice_meta.items():
                 slices[slice_name].append(np.mean(load_list))
         for k, v in slices.items():
-            print(f'[{k}]:\tMean: {np.mean(v)}, Dev: {np.std(v)}, Values: {v}')
+            res = [f'{elem:.2f}' for elem in v]
+            print(f'[{k}]:\tMean: {np.mean(v):.4f}, Dev: {np.std(v):.4f}, Values: {res}')
         print('-' * 60)

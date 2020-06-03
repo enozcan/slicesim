@@ -1,6 +1,6 @@
 settings:
-  simulation_time: 50
-  num_clients: 1
+  simulation_time: 500
+  num_clients: 10000
   limit_closest_base_stations: 5
   statistics_params:
     warmup_ratio: 0.05
@@ -12,12 +12,17 @@ settings:
       min: 0
       max: 1980
   logging: True
-  log_file: output.txt
+  log_stat_only: True
+  #log_file: output_lb.txt
+  #load_balance_handover: True
+  log_file: output_non_lb.txt
+  load_balance_handover: False
   plotting_params:
     plotting: False
     plot_save: False
     plot_show: False
-    plot_file: output.png
+    #plot_file: output_lb.png
+    plot_file: output_non_lb.png
     plot_file_dpi: 1000
     scatter_size: 15
 slices:
@@ -107,7 +112,7 @@ slices:
         - 8000000
 base_stations:
   - capacity_bandwidth: 20000000000
-    coverage: 224
+    coverage: 448
     ratios:
       x_URLLC: 0.01
       x_eMBB: 0.59
@@ -119,7 +124,7 @@ base_stations:
     x: 182
     y: 1414
   - capacity_bandwidth: 20000000000
-    coverage: 250
+    coverage: 500
     ratios:
       x_URLLC: 0.01
       x_eMBB: 0.37
@@ -131,7 +136,7 @@ base_stations:
     x: 556
     y: 1262
   - capacity_bandwidth: 25000000000
-    coverage: 276
+    coverage: 552
     ratios:
       x_URLLC: 0.01
       x_eMBB: 0.38
@@ -143,7 +148,7 @@ base_stations:
     x: 514
     y: 766
   - capacity_bandwidth: 30000000000
-    coverage: 316
+    coverage: 632
     ratios:
       x_URLLC: 0.01
       x_eMBB: 0.45
@@ -155,7 +160,7 @@ base_stations:
     x: 64
     y: 510
   - capacity_bandwidth: 30000000000
-    coverage: 384
+    coverage: 768
     ratios:
       x_URLLC: 0.05
       x_eMBB: 0.2
@@ -167,7 +172,7 @@ base_stations:
     x: 126
     y: 1016
   - capacity_bandwidth: 25000000000
-    coverage: 348
+    coverage: 696
     ratios:
       x_URLLC: 0.01
       x_eMBB: 0.48
@@ -179,7 +184,7 @@ base_stations:
     x: 1296
     y: 980
   - capacity_bandwidth: 25000000000
-    coverage: 334
+    coverage: 668
     ratios:
       x_URLLC: 0.01
       x_eMBB: 0.4
@@ -191,7 +196,7 @@ base_stations:
     x: 544
     y: 1714
   - capacity_bandwidth: 30000000000
-    coverage: 316
+    coverage: 632
     ratios:
       x_URLLC: 0.01
       x_eMBB: 0.36
@@ -203,7 +208,7 @@ base_stations:
     x: 996
     y: 1822
   - capacity_bandwidth: 80000000000
-    coverage: 418
+    coverage: 836
     ratios:
       x_URLLC: 0.01
       x_eMBB: 0.47
@@ -215,7 +220,7 @@ base_stations:
     x: 1568
     y: 1608
   - capacity_bandwidth: 35000000000
-    coverage: 356
+    coverage: 712
     ratios:
       x_URLLC: 0.01
       x_eMBB: 0.4
@@ -227,7 +232,7 @@ base_stations:
     x: 980
     y: 1370
   - capacity_bandwidth: 35000000000
-    coverage: 206
+    coverage: 412
     ratios:
       x_URLLC: 0.02
       x_eMBB: 0.2
@@ -239,7 +244,7 @@ base_stations:
     x: 792
     y: 988
   - capacity_bandwidth: 40000000000
-    coverage: 392
+    coverage: 784
     ratios:
       x_URLLC: 0.01
       x_eMBB: 0.42
@@ -251,7 +256,7 @@ base_stations:
     x: 878
     y: 560
   - capacity_bandwidth: 75000000000
-    coverage: 406
+    coverage: 812
     ratios:
       x_URLLC: 0.01
       x_eMBB: 0.42
@@ -263,7 +268,7 @@ base_stations:
     x: 372
     y: 180
   - capacity_bandwidth: 50000000000
-    coverage: 384
+    coverage: 768
     ratios:
       x_URLLC: 0.01
       x_eMBB: 0.4
@@ -275,7 +280,7 @@ base_stations:
     x: 1066
     y: 94
   - capacity_bandwidth: 100000000000
-    coverage: 464
+    coverage: 928
     ratios:
       x_URLLC: 0.01
       x_eMBB: 0.4
@@ -287,7 +292,7 @@ base_stations:
     x: 1864
     y: 962
   - capacity_bandwidth: 30000000000
-    coverage: 302
+    coverage: 604
     ratios:
       x_URLLC: 0.01
       x_eMBB: 0.44
@@ -299,7 +304,7 @@ base_stations:
     x: 1442
     y: 476
   - capacity_bandwidth: 35000000000
-    coverage: 330
+    coverage: 660
     ratios:
       x_URLLC: 0.01
       x_eMBB: 0.44
@@ -311,7 +316,7 @@ base_stations:
     x: 1862
     y: 296
   - capacity_bandwidth: 20000000000
-    coverage: 242
+    coverage: 484
     ratios:
       x_URLLC: 0.01
       x_eMBB: 0.43
@@ -323,7 +328,7 @@ base_stations:
     x: 1538
     y: 26
   - capacity_bandwidth: 10000000000
-    coverage: 152
+    coverage: 304
     ratios:
       x_URLLC: 0.05
       x_eMBB: 0.25
@@ -335,7 +340,7 @@ base_stations:
     x: 1448
     y: 1456
   - capacity_bandwidth: 50
-    coverage: 368
+    coverage: 736
     ratios:
       x_URLLC: 0.01
       x_eMBB: 0.4

@@ -13,7 +13,7 @@ class Client:
     def __init__(self, pk, env, x, y, mobility_pattern,
                  usage_freq,
                  subscribed_slice_index, stat_collector,
-                 base_station=None):
+                 base_station=None, lb_handover=True):
         self.pk = pk
         self.env = env
         self.x = x
@@ -39,6 +39,13 @@ class Client:
         # print(self.usage_freq)
 
         self.suppress_log = True if os.environ["SLICE_SIM_LOG_STAT_ONLY"] is "1" else False
+        self.lb_handover = lb_handover
+
+    def skip_lb_handover(self, candidate_bs, current_load):
+        return (not self.lb_handover) or\
+               len(candidate_bs) == 0 or \
+               current_load < PER_SLICE_THRESHOLD or\
+               candidate_bs[0][1].slices[self.subscribed_slice_index].get_load() > (current_load - HAND_OVER_LOAD_MARGIN)
 
     def assign_optimal_base_station(self):
         old_load = self.get_slice().get_load() if self.base_station is not None else -1
@@ -48,9 +55,7 @@ class Client:
         st = [x for x in st if x[0] <= x[1].coverage.radius]
         st.sort(key=lambda x: x[1].slices[self.subscribed_slice_index].get_load())
 
-        if inside and \
-                (len(st) == 0 or old_load < PER_SLICE_THRESHOLD or
-                 (st[0][1].slices[self.subscribed_slice_index].get_load() > (old_load - HAND_OVER_LOAD_MARGIN))):
+        if inside and self.skip_lb_handover(st, old_load):
             self.log(f'[{int(self.env.now)}] Client_{self.pk} continues to be assigned to {self.base_station}')
             return
 
@@ -141,22 +146,6 @@ class Client:
 
         yield self.env.process(self.iter())
 
-    def should_handover(self, load):
-        st = self.get_closest_base_stations(exclude=[self.base_station.pk])
-        st = [x for x in st if x[0] <= x[1].coverage.radius]
-        # st contains the available stations in the range now.
-        # if it's empty, then handover is not available for this client.
-        if load >= HAND_OFF_THRESHOLD and len(st) is not 0:
-            if np.random.random(1)[0] > ((1.0 * load - HAND_OFF_THRESHOLD) / load):
-                return True
-            else:
-                return False
-
-    def handover(self):
-        old_pk = self.base_station.pk
-        self.disconnect()
-        self.assign_closest_base_station(exclude=[self.base_station.pk])
-
     def get_slice(self):
         if self.base_station is None:
             return None
@@ -233,19 +222,6 @@ class Client:
             self.total_usage += self.last_usage
             self.usage_remaining -= self.last_usage
             self.last_usage = 0
-
-    # Check closest base_stations of a client and assign the closest non-excluded available base_station to the client.
-    def assign_closest_base_station(self, exclude=None):
-        stations = self.get_closest_base_stations(exclude)
-        for d, b in stations:
-            if d <= b.coverage.radius:
-                self.base_station = b
-                self.log(f'[{int(self.env.now)}] Client_{self.pk} freshly assigned to {self.base_station}')
-                return
-        if KDTree.last_run_time is not int(self.env.now):
-            KDTree.run(self.stat_collector.clients, self.stat_collector.base_stations, int(self.env.now), assign=False,
-                       logging=(not self.suppress_log))
-        self.base_station = None
 
     def get_closest_base_stations(self, exclude=None):
         updated_list = []

@@ -77,6 +77,7 @@ NUM_CLIENTS = SETTINGS['num_clients']
 MOBILITY_PATTERNS = data['mobility_patterns']
 BASE_STATIONS = data['base_stations']
 CLIENTS = data['clients']
+LB_HANDOVER = SETTINGS['load_balance_handover']
 
 if SETTINGS['logging']:
     sys.stdout = open(SETTINGS['log_file'], 'wt')
@@ -145,7 +146,8 @@ for i in range(NUM_CLIENTS):
 
     connected_slice_index = get_random_slice_index(slice_weights)
     c = Client(i, env, location_x, location_y,
-               mobility_pattern, usage_freq_pattern.generate_scaled(), connected_slice_index, stats)
+               mobility_pattern, usage_freq_pattern.generate_scaled(), connected_slice_index, stats,
+               lb_handover=LB_HANDOVER)
     clients.append(c)
 
 KDTree.limit = SETTINGS['limit_closest_base_stations']
