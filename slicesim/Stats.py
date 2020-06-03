@@ -136,3 +136,21 @@ class Stats:
             for slice_name, load_list in slice_meta.items():
                 print(slice_name, "loads mean:", np.mean(load_list))
         print("Drop mean:", np.mean(self.drop_count))
+        print("Handover mean:", np.mean(self.handover_count))
+        print("Block mean:", np.mean(self.block_count))
+
+    def print_load_stdev_stats(self):
+        print("--Slice load stdev statistics--")
+        slices = {}
+        for bs in self.base_stations:
+            for sl in bs.slices:
+                slices[sl.name] = []
+            break
+
+        for bs, slice_meta in self.load_stats.items():
+            for slice_name, load_list in slice_meta.items():
+                slices[slice_name].append(np.mean(load_list))
+
+        for k, v in slices.items():
+            print("Slice", k, "mean load:", np.mean(v), "stdev load: ", np.std(v))
+            print("~~~ ", v, " ~~~")
