@@ -26,8 +26,9 @@ class KDTree:
 
     # Initial connections using k-d tree
     @staticmethod
-    def run(clients, base_stations, run_at, assign=True):
-        print(f'KDTREE CALL [{run_at}] - limit: {KDTree.limit}')
+    def run(clients, base_stations, run_at, assign=True, logging=True):
+        if logging:
+            print(f'KDTREE CALL [{run_at}] - limit: {KDTree.limit}')
         if run_at == KDTree.last_run_time:
             return
         KDTree.last_run_time = run_at

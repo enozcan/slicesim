@@ -83,6 +83,8 @@ if SETTINGS['logging']:
 else:
     sys.stdout = open(os.devnull, 'w')
 
+os.environ["SLICE_SIM_LOG_STAT_ONLY"] = "1" if SETTINGS['log_stat_only'] else "0"
+
 collected, slice_weights = 0, []
 for __, s in SLICES_INFO.items():
     collected += s['client_weight']
@@ -103,6 +105,7 @@ for name, s in SLICES_INFO.items():
     usage_patterns[name] = Distributor(name, get_dist(s['usage_pattern']['distribution']),
                                        *s['usage_pattern']['params'])
 
+print('-' * 20, "Base Stations", '-' * 20)
 base_stations = []
 i = 0
 for b in BASE_STATIONS:
@@ -119,7 +122,9 @@ for b in BASE_STATIONS:
         slices.append(s)
     base_station = BaseStation(i, Coverage((b['x'], b['y']), b['coverage']), capacity, slices)
     base_stations.append(base_station)
+    print(base_station)
     i += 1
+print('-' * 60)
 
 ufp = CLIENTS['usage_frequency']
 usage_freq_pattern = Distributor(f'ufp', get_dist(ufp['distribution']), *ufp['params'],
@@ -144,14 +149,17 @@ for i in range(NUM_CLIENTS):
     clients.append(c)
 
 KDTree.limit = SETTINGS['limit_closest_base_stations']
-KDTree.run(clients, base_stations, 0)
+KDTree.run(clients, base_stations, 0, logging=False if os.environ["SLICE_SIM_LOG_STAT_ONLY"] is "1" else True)
 
 stats.clients = clients
 env.process(stats.collect())
 
 env.run(until=int(SETTINGS['simulation_time']))
 
+# TODO: Some stats of clients printed below are never updated.
+"""
 for client in clients:
+    
     print(client)
     print(f'\tTotal connected time: {client.total_connected_time:>5}')
     print(f'\tTotal unconnected time: {client.total_unconnected_time:>5}')
@@ -159,10 +167,13 @@ for client in clients:
     print(f'\tTotal consume time: {client.total_consume_time:>5}')
     print(f'\tTotal usage: {client.total_usage:>5}')
     print()
+"""
 
-print(stats.get_stats())
+print("Number or clients:", NUM_CLIENTS)
+print('-' * 60)
 
-stats.print_load_stats()
+stats.print_general_stats()
+stats.print_detailed_slice_load_stats()
 
 if SETTINGS['plotting_params']['plotting']:
     xlim_left = int(SETTINGS['simulation_time'] * SETTINGS['statistics_params']['warmup_ratio'])

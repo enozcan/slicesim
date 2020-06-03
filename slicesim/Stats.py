@@ -1,4 +1,5 @@
 import numpy as np
+from collections import defaultdict
 
 
 class Stats:
@@ -135,28 +136,34 @@ class Stats:
         xs, ys = self.area
         return True if xs[0] <= client.x <= xs[1] and ys[0] <= client.y <= ys[1] else False
 
-    def print_load_stats(self):
-        print("--Slice load statistics--")
+    def print_general_stats(self):
+        print('-' * 20, "General Stats", '-' * 20)
+        p = lambda header, stats: print(f'[{header}] Mean: {np.mean(stats)}, Dev: {np.std(stats)}, Series: {stats}')
+        p("Total Connected Users\t", self.total_connected_users_ratio)
+        p("Total Bandwidth Used\t", self.total_used_bw)
+        p("Avg Slice Load Ratio\t", self.avg_slice_load_ratio)
+        p("Avg Slice Client Count\t", self.avg_slice_client_count)
+        p("Client Coverage Ratios\t", self.coverage_ratio)
+        p("Blocked Clients Count\t", self.block_count)
+        p("Client Handover Count\t", self.handover_count)
+        p("Out of coverage Count\t", self.out_of_coverage_count)
+        print('-' * 60)
+
+    def print_detailed_slice_load_stats(self):
+        self.print_per_slice_stats()
+        print('-' * 20, "Station Load Stats", '-' * 20)
         for bs, slice_meta in self.load_stats.items():
-            print("BS:", bs)
+            print('-' * 10, "BS:", bs, '-' * 10)
             for slice_name, load_list in slice_meta.items():
-                print(slice_name, "loads mean:", np.mean(load_list))
-        print("Out of coverage mean:", np.mean(self.out_of_coverage_count))
-        print("Handover mean:", np.mean(self.handover_count))
-        print("Block mean:", np.mean(self.block_count))
+                print(f'[{slice_name}]\t Mean: {np.mean(load_list)}, Dev: {np.std(load_list)}, Values: {load_list}')
+        print('-' * 60)
 
-    def print_load_stdev_stats(self):
-        print("--Slice load stdev statistics--")
-        slices = {}
-        for bs in self.base_stations:
-            for sl in bs.slices:
-                slices[sl.name] = []
-            break
-
+    def print_per_slice_stats(self):
+        print('-' * 20, "Slice Load Stats", '-' * 20)
+        slices = defaultdict(lambda: [])
         for bs, slice_meta in self.load_stats.items():
             for slice_name, load_list in slice_meta.items():
                 slices[slice_name].append(np.mean(load_list))
-
         for k, v in slices.items():
-            print("Slice", k, "mean load:", np.mean(v), "stdev load: ", np.std(v))
-            print("~~~ ", v, " ~~~")
+            print(f'[{k}]:\tMean: {np.mean(v)}, Dev: {np.std(v)}, Values: {v}')
+        print('-' * 60)
