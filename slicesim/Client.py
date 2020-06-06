@@ -12,7 +12,7 @@ HAND_OVER_LOAD_MARGIN = 0.05
 class Client:
     def __init__(self, pk, env, x, y, mobility_pattern,
                  usage_freq,
-                 subscribed_slice_index, stat_collector,
+                 subscribed_slice_indices, stat_collector,
                  base_station=None, lb_handover=True):
         self.pk = pk
         self.env = env
@@ -22,9 +22,12 @@ class Client:
         self.usage_freq = usage_freq
         self.base_station = base_station
         self.stat_collector = stat_collector
-        self.subscribed_slice_index = subscribed_slice_index
-        self.usage_remaining = 0
-        self.last_usage = 0
+        self.subscribed_slice_indices = subscribed_slice_indices
+        self.usage_remaining = {}
+        self.last_usage = {}
+        for index in self.subscribed_slice_indices:
+            self.usage_remaining[index] = 0
+            self.last_usage[index] = 0
         self.closest_base_stations = []
         self.connected = False
 
@@ -41,51 +44,75 @@ class Client:
         self.suppress_log = True if os.environ["SLICE_SIM_LOG_STAT_ONLY"] is "1" else False
         self.lb_handover = lb_handover
 
-    def skip_lb_handover(self, candidate_bs, current_load):
-        return (not self.lb_handover) or\
-               len(candidate_bs) == 0 or \
-               current_load < PER_SLICE_THRESHOLD or\
-               candidate_bs[0][1].slices[self.subscribed_slice_index].get_load() > (current_load - HAND_OVER_LOAD_MARGIN)
+    def skip_lb_handover(self, max_current_load, max_candidate_load):
+        return (not self.lb_handover) or \
+               max_current_load < PER_SLICE_THRESHOLD or \
+               max_candidate_load > (max_current_load - HAND_OVER_LOAD_MARGIN)
+
+    def get_next_base_station(self):
+        in_coverage = self.base_station is not None and self.base_station.coverage.is_in_coverage(self.x, self.y)
+        current_slice_loads = [s.get_load() for s in self.get_slices()] if self.base_station is not None else []
+        print("~~ CURRENT LOADS:", current_slice_loads)
+        max_current_load = max(current_slice_loads) if len(current_slice_loads) is not 0 else -1
+
+        def get_max_slice_load(station):
+            return max([s.get_load() for s in np.asarray(station.slices)[self.subscribed_slice_indices]])
+
+        st = self.get_candidate_base_stations(exclude=[self.base_station.pk] if self.base_station is not None else [])
+        st.sort(key=lambda x: get_max_slice_load(x[1])) # TODO: Pass lambda as param for distinct mechanisms
+
+        max_candidate_load = get_max_slice_load(st[0][1]) if len(st) > 0 else 1
+
+        for t in st:
+            print("~", t[1])
+
+        if in_coverage and self.skip_lb_handover(max_current_load, max_candidate_load):
+            return self.base_station
+
+        return st[0][1] if len(st) > 0 else None
 
     def assign_optimal_base_station(self):
-        old_load = self.get_slice().get_load() if self.base_station is not None else -1
-        inside = self.base_station is not None and self.base_station.coverage.is_in_coverage(self.x, self.y)
-
-        st = self.get_closest_base_stations(exclude=[self.base_station.pk] if self.base_station is not None else [])
-        st = [x for x in st if x[0] <= x[1].coverage.radius]
-        st.sort(key=lambda x: x[1].slices[self.subscribed_slice_index].get_load())
-
-        if inside and self.skip_lb_handover(st, old_load):
+        next_bs = self.get_next_base_station()
+        if self.base_station is next_bs:
             self.log(f'[{int(self.env.now)}] Client_{self.pk} continues to be assigned to {self.base_station}')
             return
 
+        if self.base_station is None:
+            self.base_station = next_bs
+            self.log(f'[{int(self.env.now)}] Client_{self.pk} freshly assigned to {self.base_station}')
+            return
+
+        if next_bs is None:
+            self.log(f'[{int(self.env.now)}] Client_{self.pk} could not assigned to any base station')
+            self.stat_collector.incr_out_of_coverage_count(self)
+            self.base_station = next_bs
+            if KDTree.last_run_time is not int(self.env.now):
+                KDTree.run(self.stat_collector.clients, self.stat_collector.base_stations, int(self.env.now),
+                           assign=False, logging=(not self.suppress_log))
+            return
+
+        # handover happens here.
         if self.connected:
             self.log(f'[{int(self.env.now)}] Client_{self.pk} disconnecting...')
             self.disconnect()
 
-        if len(st) > 0:
-            if self.base_station is None:
-                self.base_station = st[0][1]
-                self.log(f'[{int(self.env.now)}] Client_{self.pk} freshly assigned to {self.base_station}')
-            else:
-                self.base_station = st[0][1]
-                self.log(f'[{int(self.env.now)}] Client_{self.pk} assigned to {st[0][1]} after handover, inside? {inside}')
-                self.stat_collector.incr_handover_count(self)
-            new_load = self.get_slice().get_load()
+        self.log(f'[{int(self.env.now)}] Client_{self.pk} assigned to {next_bs} after handover.')
+        # self.log(f'[{int(self.env.now)}] Client_{self.pk} old load was {old_load}, new load is {new_load}')
+        self.base_station = next_bs
+        self.stat_collector.incr_handover_count(self)
 
-            self.log(f'[{int(self.env.now)}] Client_{self.pk} old load was {old_load}, new load is {new_load}')
-            return
 
-        if KDTree.last_run_time is not int(self.env.now):
-            KDTree.run(self.stat_collector.clients, self.stat_collector.base_stations, int(self.env.now), assign=False,
-                       logging=(not self.suppress_log))
-        # TODO: Investigate the reason for printing this for all clients at the time 0.
+    def is_all_remaining_usages_zero(self):
+        for _, v in self.usage_remaining.items():
+            if v is not 0:
+                return False
+        return True
 
-        self.log(f'[{int(self.env.now)}] Client_{self.pk} could not assigned to any base station')
-
-        if self.base_station is not None:
-            self.stat_collector.incr_out_of_coverage_count(self)
-        self.base_station = None
+    def is_all_last_usages_zero(self):
+        for _, v in self.last_usage.items():
+            if v is not 0:
+                return False
+        return True
 
     def iter(self):
         """
@@ -100,7 +127,8 @@ class Client:
         self.assign_optimal_base_station()
 
         if self.base_station is not None:
-            if self.usage_remaining > 0:
+            if not self.is_all_remaining_usages_zero():
+                self.generate_usage()
                 if self.connected:
                     self.start_consume()
                 else:
@@ -109,7 +137,8 @@ class Client:
                 if self.connected:
                     self.disconnect()
                 else:
-                    self.generate_usage_and_connect()
+                    if self.generate_usage():
+                        self.connect()
 
         yield self.env.timeout(0.25)
 
@@ -119,9 +148,9 @@ class Client:
 
         # .50: Release
         # Base station check skipped as it's already implied by self.connected
-        if self.connected and self.last_usage > 0:
+        if self.connected and not self.is_all_last_usages_zero():
             self.release_consume()
-            if self.usage_remaining <= 0:
+            if self.is_all_remaining_usages_zero():
                 self.disconnect()
 
         yield self.env.timeout(0.25)
@@ -146,30 +175,44 @@ class Client:
 
         yield self.env.process(self.iter())
 
-    def get_slice(self):
+    def get_slices(self):
         if self.base_station is None:
             return None
-        return self.base_station.slices[self.subscribed_slice_index]
+        return np.asarray(self.base_station.slices)[self.subscribed_slice_indices]
 
-    def generate_usage_and_connect(self):
-        if self.usage_freq < random.random() and self.get_slice() is not None:
-            # Generate a new usage
-            self.usage_remaining = self.get_slice().usage_pattern.generate()
-            self.total_request_count += 1
-            self.connect()
-            self.log(f'[{int(self.env.now)}] Client_{self.pk} [{self.x}, {self.y}] requests {self.usage_remaining} usage.')
+    def generate_usage(self):
+        generated = False
+        if self.get_slices() is None:
+            return generated
+        for slice_idx, remain in self.usage_remaining.items():
+            if remain is 0 and self.usage_freq < random.random():
+                sl = self.base_station.slices[slice_idx]
+                self.usage_remaining[slice_idx] = sl.usage_pattern.generate()
+                self.total_request_count += 1
+                self.log(
+                    f'[{int(self.env.now)}] Client_{self.pk} [{self.x}, {self.y}] requests {self.usage_remaining[slice_idx]}'
+                    f' usage from slice: {sl}')
+                generated = True
+        return generated
+
+    def is_bs_available(self):
+        for sl in self.get_slices():
+            if not sl.is_available() and self.usage_remaining[sl.index] > 0:
+                return False
+        return True
 
     def connect(self):
-        s = self.get_slice()
         if self.connected:
             return
+        slices = self.get_slices()
         # increment connect attempt
         self.stat_collector.incr_connect_attempt(self)
-        if s.is_available():
-            s.connected_users += 1
+        if self.is_bs_available():
+            for sl in slices:
+                sl.connected_users += 1
             self.connected = True
             self.log(
-                f'[{int(self.env.now)}] Client_{self.pk} [{self.x}, {self.y}] connected to slice={self.get_slice()}'
+                f'[{int(self.env.now)}] Client_{self.pk} [{self.x}, {self.y}] connected to slices={[s.name for s in slices]}'
                 f' @ {self.base_station}')
             return True
         else:
@@ -187,54 +230,62 @@ class Client:
             self.stat_collector.incr_block_count(self)
             self.log(
                 f'[{int(self.env.now)}] Client_{self.pk} [{self.x}, {self.y}] connection refused to '
-                f'slice={self.get_slice()} @ {self.base_station}')
+                f'slices={[s.name for s in slices]} @ {self.base_station}')
             return False
 
     def disconnect(self):
+        slices = self.get_slices()
         if not self.connected:
             self.log(
                 f'[{int(self.env.now)}] Client_{self.pk} [{self.x}, {self.y}] is already disconnected from '
-                f'slice={self.get_slice()} @ {self.base_station}')
+                f'slices={[s.name for s in slices]} @ {self.base_station}')
         else:
-            slice = self.get_slice()
-            slice.connected_users -= 1
+            for sl in slices:
+                sl.connected_users -= 1
             self.connected = False
             self.log(
                 f'[{int(self.env.now)}] Client_{self.pk} [{self.x}, {self.y}] disconnected from'
-                f' slice={self.get_slice()} @ {self.base_station}')
+                f' slices={[s.name for s in slices]} @ {self.base_station}')
         return not self.connected
 
     def start_consume(self):
-        s = self.get_slice()
-        amount = min(s.get_consumable_share(), self.usage_remaining)
-        # Allocate resource and consume ongoing usage with given bandwidth
-        s.capacity.get(amount)
-        self.log(f'[{int(self.env.now)}] Client_{self.pk} [{self.x}, {self.y}] gets {amount} usage.')
-        self.last_usage = amount
+        slices = self.get_slices()
+        for s in slices:
+            amount = min(s.get_consumable_share(), self.usage_remaining[s.index])
+            # Allocate resource and consume ongoing usage with given bandwidth
+            if amount <= 0:
+                self.last_usage[s.index] = 0
+                continue
+            s.capacity.get(amount)
+            self.log(f'[{int(self.env.now)}] Client_{self.pk} [{self.x}, {self.y}] gets {amount} usage from slice: {s}.')
+            self.last_usage[s.index] = amount
 
     def release_consume(self):
-        s = self.get_slice()
-        # Put the resource back
-        if self.last_usage > 0:  # note: s.capacity.put cannot take 0
-            s.capacity.put(self.last_usage)
-            self.log(f'[{int(self.env.now)}] Client_{self.pk} [{self.x}, {self.y}] puts back {self.last_usage} usage.')
-            self.total_consume_time += 1
-            self.total_usage += self.last_usage
-            self.usage_remaining -= self.last_usage
-            self.last_usage = 0
+        slices = self.get_slices()
+        for s in slices:
+            # Put the resource back
+            last_usage = self.last_usage[s.index]
+            if last_usage > 0:  # note: s.capacity.put cannot take 0
+                s.capacity.put(last_usage)
+                self.log(f'[{int(self.env.now)}] Client_{self.pk} [{self.x}, {self.y}] puts back {last_usage} usage.')
+                self.total_consume_time += 1
+                self.total_usage += last_usage
+                self.usage_remaining[s.index] -= last_usage
+                self.last_usage[s.index] = 0
 
-    def get_closest_base_stations(self, exclude=None):
+    def get_candidate_base_stations(self, exclude=None):
         updated_list = []
         for d, b in self.closest_base_stations:
             if exclude is not None and b.pk in exclude:
                 continue
             d = distance((self.x, self.y), (b.coverage.center[0], b.coverage.center[1]))
             updated_list.append((d, b))
+        updated_list = [x for x in updated_list if x[0] <= x[1].coverage.radius]
         updated_list.sort(key=operator.itemgetter(0))
         return updated_list
 
     def __str__(self):
-        return f'Client_{self.pk} [{self.x:<5}, {self.y:>5}] connected to: slice={self.get_slice()} ' \
+        return f'Client_{self.pk} [{self.x:<5}, {self.y:>5}] connected to: slices={[s.name for s in self.get_slices()]} ' \
                f'@ {self.base_station}\t with mobility pattern of {self.mobility_pattern}'
 
     def log(self, message):

@@ -1,6 +1,6 @@
 settings:
-  simulation_time: 500
-  num_clients: 10000
+  simulation_time: 50
+  num_clients: 500
   limit_closest_base_stations: 5
   statistics_params:
     warmup_ratio: 0.05
@@ -12,7 +12,7 @@ settings:
       min: 0
       max: 1980
   logging: True
-  log_stat_only: True
+  log_stat_only: False
   #log_file: output_lb.txt
   #load_balance_handover: True
   log_file: output_non_lb.txt

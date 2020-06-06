@@ -1,6 +1,7 @@
 import os
 import random
 import sys
+import numpy as np
 
 import simpy
 import yaml
@@ -46,12 +47,14 @@ def get_random_mobility_pattern(vals, mobility_patterns):
     return mobility_patterns[i]
 
 
-def get_random_slice_index(vals):
-    i = 0
-    r = random.random()
-    while vals[i] < r:
-        i += 1
-    return i
+def get_random_slice_indices(vals):
+    slices_count = 3  # TODO: random
+    return np.random.choice(len(vals), slices_count, replace=False, p=vals)
+    #i = 0
+    #r = random.random()
+    #while vals[i] < r:
+    #    i += 1
+    #return i
 
 
 if len(sys.argv) != 3:
@@ -88,8 +91,8 @@ os.environ["SLICE_SIM_LOG_STAT_ONLY"] = "1" if SETTINGS['log_stat_only'] else "0
 
 collected, slice_weights = 0, []
 for __, s in SLICES_INFO.items():
-    collected += s['client_weight']
-    slice_weights.append(collected)
+    # collected += s['client_weight']
+    slice_weights.append(s['client_weight'])
 
 collected, mb_weights = 0, []
 for __, mb in MOBILITY_PATTERNS.items():
@@ -113,14 +116,16 @@ for b in BASE_STATIONS:
     slices = []
     ratios = b['ratios']
     capacity = b['capacity_bandwidth']
+    slice_idx = 0
     for name, s in SLICES_INFO.items():
         s_cap = capacity * ratios[name]
         # TODO remove bandwidth max
         s = Slice(name, ratios[name], 0, s['client_weight'],
                   s['delay_tolerance'],
                   s['qos_class'], s['bandwidth_guaranteed'],
-                  s['bandwidth_max'], s_cap, usage_patterns[name], env)
+                  s['bandwidth_max'], s_cap, usage_patterns[name], env, slice_idx)
         slices.append(s)
+        slice_idx += 1
     base_station = BaseStation(i, Coverage((b['x'], b['y']), b['coverage']), capacity, slices)
     base_stations.append(base_station)
     print(base_station)
@@ -144,9 +149,9 @@ for i in range(NUM_CLIENTS):
 
     mobility_pattern = get_random_mobility_pattern(mb_weights, mobility_patterns)
 
-    connected_slice_index = get_random_slice_index(slice_weights)
+    connected_slice_indices = get_random_slice_indices(slice_weights)
     c = Client(i, env, location_x, location_y,
-               mobility_pattern, usage_freq_pattern.generate_scaled(), connected_slice_index, stats,
+               mobility_pattern, usage_freq_pattern.generate_scaled(), connected_slice_indices, stats,
                lb_handover=LB_HANDOVER)
     clients.append(c)
 

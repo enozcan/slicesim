@@ -168,6 +168,6 @@ class Stats:
             for slice_name, load_list in slice_meta.items():
                 slices[slice_name].append(np.mean(load_list))
         for k, v in slices.items():
-            res = [f'{elem:.2f}' for elem in v]
+            res = [f'{elem:.8f}' for elem in v]
             print(f'[{k}]:\tMean: {np.mean(v):.4f}, Dev: {np.std(v):.4f}, Values: {res}')
         print('-' * 60)

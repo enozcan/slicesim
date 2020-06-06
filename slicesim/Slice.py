@@ -5,7 +5,7 @@ class Slice:
     def __init__(self, name, ratio,
                  connected_users, user_share, delay_tolerance, qos_class,
                  bandwidth_guaranteed, bandwidth_max, init_capacity,
-                 usage_pattern, env):
+                 usage_pattern, env, index):
         self.name = name
         self.connected_users = connected_users
         self.user_share = user_share
@@ -17,6 +17,7 @@ class Slice:
         self.init_capacity = init_capacity
         self.capacity = simpy.Container(env, init=init_capacity, capacity=init_capacity)
         self.usage_pattern = usage_pattern
+        self.index = index
     
     def get_consumable_share(self):
         if self.connected_users <= 0:
