@@ -48,13 +48,9 @@ def get_random_mobility_pattern(vals, mobility_patterns):
 
 
 def get_random_slice_indices(vals):
-    slices_count = 3  # TODO: random
-    return np.random.choice(len(vals), slices_count, replace=False, p=vals)
-    #i = 0
-    #r = random.random()
-    #while vals[i] < r:
-    #    i += 1
-    #return i
+    subscribed_slices_count = np.random.randint(3, size=1)[0] + 1
+    result = np.random.choice(len(vals), subscribed_slices_count, replace=False, p=vals)
+    return result
 
 
 if len(sys.argv) != 3:
@@ -141,6 +137,7 @@ y_vals = SETTINGS['statistics_params']['y']
 stats = Stats(env, base_stations, None, ((x_vals['min'], x_vals['max']), (y_vals['min'], y_vals['max'])))
 
 clients = []
+
 for i in range(NUM_CLIENTS):
     loc_x = CLIENTS['location']['x']
     loc_y = CLIENTS['location']['y']
@@ -148,7 +145,6 @@ for i in range(NUM_CLIENTS):
     location_y = get_dist(loc_y['distribution'])(*loc_y['params'])
 
     mobility_pattern = get_random_mobility_pattern(mb_weights, mobility_patterns)
-
     connected_slice_indices = get_random_slice_indices(slice_weights)
     c = Client(i, env, location_x, location_y,
                mobility_pattern, usage_freq_pattern.generate_scaled(), connected_slice_indices, stats,

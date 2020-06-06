@@ -1,11 +1,9 @@
-import operator
 import random
 import numpy as np
 import os
 from .utils import distance, KDTree
 
-HAND_OFF_THRESHOLD = 0.1
-PER_SLICE_THRESHOLD = 0.75
+PER_SLICE_THRESHOLD = 0.7
 HAND_OVER_LOAD_MARGIN = 0.05
 
 
@@ -52,26 +50,30 @@ class Client:
     def get_next_base_station(self):
         in_coverage = self.base_station is not None and self.base_station.coverage.is_in_coverage(self.x, self.y)
         current_slice_loads = [s.get_load() for s in self.get_slices()] if self.base_station is not None else []
-        print("~~ CURRENT LOADS:", current_slice_loads)
         max_current_load = max(current_slice_loads) if len(current_slice_loads) is not 0 else -1
 
         def get_max_slice_load(station):
             return max([s.get_load() for s in np.asarray(station.slices)[self.subscribed_slice_indices]])
 
         st = self.get_candidate_base_stations(exclude=[self.base_station.pk] if self.base_station is not None else [])
-        st.sort(key=lambda x: get_max_slice_load(x[1])) # TODO: Pass lambda as param for distinct mechanisms
+        st.sort(key=lambda x: get_max_slice_load(x[1]))  # TODO: Pass lambda as param for distinct mechanisms
 
         max_candidate_load = get_max_slice_load(st[0][1]) if len(st) > 0 else 1
-
-        for t in st:
-            print("~", t[1])
 
         if in_coverage and self.skip_lb_handover(max_current_load, max_candidate_load):
             return self.base_station
 
+        self.log(f'[{int(self.env.now)}] Client_{self.pk} old load was {max_current_load} at '
+                 f'BS:{self.base_station.pk if self.base_station is not None else None}, '
+                 f'new load is {max_candidate_load} at BS:{st[0][1].pk if len(st) > 0 else None}')
         return st[0][1] if len(st) > 0 else None
 
     def assign_optimal_base_station(self):
+
+        if KDTree.last_run_time is not int(self.env.now):
+            KDTree.run(self.stat_collector.clients, self.stat_collector.base_stations, int(self.env.now),
+                       assign=False, logging=(not self.suppress_log))
+
         next_bs = self.get_next_base_station()
         if self.base_station is next_bs:
             self.log(f'[{int(self.env.now)}] Client_{self.pk} continues to be assigned to {self.base_station}')
@@ -86,9 +88,6 @@ class Client:
             self.log(f'[{int(self.env.now)}] Client_{self.pk} could not assigned to any base station')
             self.stat_collector.incr_out_of_coverage_count(self)
             self.base_station = next_bs
-            if KDTree.last_run_time is not int(self.env.now):
-                KDTree.run(self.stat_collector.clients, self.stat_collector.base_stations, int(self.env.now),
-                           assign=False, logging=(not self.suppress_log))
             return
 
         # handover happens here.
@@ -97,10 +96,8 @@ class Client:
             self.disconnect()
 
         self.log(f'[{int(self.env.now)}] Client_{self.pk} assigned to {next_bs} after handover.')
-        # self.log(f'[{int(self.env.now)}] Client_{self.pk} old load was {old_load}, new load is {new_load}')
         self.base_station = next_bs
         self.stat_collector.incr_handover_count(self)
-
 
     def is_all_remaining_usages_zero(self):
         for _, v in self.usage_remaining.items():
@@ -197,7 +194,10 @@ class Client:
 
     def is_bs_available(self):
         for sl in self.get_slices():
-            if not sl.is_available() and self.usage_remaining[sl.index] > 0:
+            if self.usage_remaining[sl.index] > 0 and not sl.is_available():
+                print(f'[{int(self.env.now)}] Client_{self.pk} is blocked at bs {self.base_station} for slice {sl.name} '
+                      f'and its load={sl.get_load()}, its availability={sl.is_available()}')
+                sl.print_stats()
                 return False
         return True
 
@@ -280,9 +280,9 @@ class Client:
                 continue
             d = distance((self.x, self.y), (b.coverage.center[0], b.coverage.center[1]))
             updated_list.append((d, b))
-        updated_list = [x for x in updated_list if x[0] <= x[1].coverage.radius]
-        updated_list.sort(key=operator.itemgetter(0))
-        return updated_list
+        # updated_list.sort(key=operator.itemgetter(0))  already sorted according to
+        filtered_list = [x for x in updated_list if x[0] <= x[1].coverage.radius]
+        return filtered_list
 
     def __str__(self):
         return f'Client_{self.pk} [{self.x:<5}, {self.y:>5}] connected to: slices={[s.name for s in self.get_slices()]} ' \

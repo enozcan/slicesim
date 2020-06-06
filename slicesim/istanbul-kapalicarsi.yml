@@ -1,6 +1,6 @@
 settings:
-  simulation_time: 50
-  num_clients: 500
+  simulation_time: 200
+  num_clients: 3000
   limit_closest_base_stations: 5
   statistics_params:
     warmup_ratio: 0.05
@@ -12,11 +12,11 @@ settings:
       min: 0
       max: 1980
   logging: True
-  log_stat_only: False
+  log_stat_only: True
   #log_file: output_lb.txt
   #load_balance_handover: True
-  log_file: output_non_lb.txt
-  load_balance_handover: False
+  log_file: output_available_fixed.txt
+  load_balance_handover: True
   plotting_params:
     plotting: False
     plot_save: False
@@ -30,14 +30,14 @@ slices:
     delay_tolerance: 10
     qos_class: 5
     bandwidth_guaranteed: 0
-    bandwidth_max: 100000000
+    bandwidth_max: 200000000
     client_weight: 0.39
     threshold: 0
     usage_pattern:
       distribution: randint
       params:
-        - 4000000
-        - 800000000
+        - 8000000
+        - 1600000000
   x_mMTC:
     delay_tolerance: 10
     qos_class: 2
