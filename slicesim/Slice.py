@@ -18,6 +18,11 @@ class Slice:
         self.capacity = simpy.Container(env, init=init_capacity, capacity=init_capacity)
         self.usage_pattern = usage_pattern
         self.index = index
+        # self.print_max_user_count()
+
+    def print_max_user_count(self):
+        max_user_count = int(self.init_capacity / self.bandwidth_guaranteed) if self.bandwidth_guaranteed is not 0 else 99999
+        print("Slice:", self, "can have at most", max_user_count, "user")
 
     def get_consumable_share(self):
         if self.connected_users <= 0:

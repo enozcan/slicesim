@@ -67,7 +67,9 @@ except FileNotFoundError:
     print('File Not Found:', CONF_FILENAME)
     exit(0)
 
-random.seed()
+# TODO: Get seed from configuration.
+random.seed(7)
+np.random.seed(7)
 env = simpy.Environment()
 
 SETTINGS = data['settings']
