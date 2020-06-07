@@ -23,7 +23,7 @@ class Stats:
         self.block_count = []
 
         self.handover_count = []
-        self.out_of_coverage_count = []
+        self.drop_count = []
 
         self.load_stats = {}
         for bs in self.base_stations:
@@ -47,14 +47,13 @@ class Stats:
         self.connect_attempt.append(0)
         self.block_count.append(0)
         self.handover_count.append(0)
-        self.out_of_coverage_count.append(0)
+        self.drop_count.append(0)
 
         while True:
             self.block_count[-1] /= self.connect_attempt[-1] if self.connect_attempt[-1] != 0 else 1
             self.handover_count[-1] /= self.connect_attempt[-1] if self.connect_attempt[-1] != 0 else 1
 
-            # TODO: Rename this since it happens when a client goes outside of the covered region.
-            self.out_of_coverage_count[-1] /= (self.connect_attempt[-1] + self.out_of_coverage_count[-1]) if \
+            self.drop_count[-1] /= (self.connect_attempt[-1] + self.drop_count[-1]) if \
                 self.connect_attempt[-1] != 0 else 1
 
             self.total_connected_users_ratio.append(self.get_total_connected_users_ratio())
@@ -66,7 +65,7 @@ class Stats:
             self.connect_attempt.append(0)
             self.block_count.append(0)
             self.handover_count.append(0)
-            self.out_of_coverage_count.append(0)
+            self.drop_count.append(0)
 
             yield self.env.timeout(1)
 
@@ -85,7 +84,7 @@ class Stats:
         t = 0
         for bs in self.base_stations:
             for sl in bs.slices:
-                t += sl.capacity.capacity - sl.capacity.level
+                t += 1e-9 * (sl.capacity.capacity - sl.capacity.level)
         return t
 
     def get_avg_slice_load_ratio(self):
@@ -120,9 +119,9 @@ class Stats:
         if self.is_client_in_coverage(client):
             self.connect_attempt[-1] += 1
 
-    def incr_out_of_coverage_count(self, client):
+    def incr_drop_count(self, client):
         if self.is_client_in_coverage(client):
-            self.out_of_coverage_count[-1] += 1
+            self.drop_count[-1] += 1
 
     def incr_block_count(self, client):
         if self.is_client_in_coverage(client):
@@ -142,13 +141,13 @@ class Stats:
         p = lambda header, stats: print(f'[{header}] Mean: {np.mean(stats):.4f}, Dev: {np.std(stats):.4f}, '
                                         f'Series: {r(stats)}')
         p("Total Connected Users\t", self.total_connected_users_ratio)
-        p("Total Bandwidth Used\t", self.total_used_bw)
+        p("Total Bandwidth Used (Gbps)\t", self.total_used_bw)
         p("Avg Slice Load Ratio\t", self.avg_slice_load_ratio)
         p("Avg Slice Client Count\t", self.avg_slice_client_count)
         p("Client Coverage Ratios\t", self.coverage_ratio)
         p("Blocked Clients Count\t", self.block_count)
         p("Client Handover Count\t", self.handover_count)
-        p("Out of coverage Count\t", self.out_of_coverage_count)
+        p("Out of coverage Count\t", self.drop_count)
         print('-' * 60)
 
     def print_detailed_slice_load_stats(self):

@@ -69,6 +69,9 @@ class Client:
         return st[0][1] if len(st) > 0 else None
 
     def assign_optimal_base_station(self):
+        """
+        :return: True if handover is performed, False otherwise
+        """
 
         if KDTree.last_run_time is not int(self.env.now):
             KDTree.run(self.stat_collector.clients, self.stat_collector.base_stations, int(self.env.now),
@@ -77,27 +80,28 @@ class Client:
         next_bs = self.get_next_base_station()
         if self.base_station is next_bs:
             self.log(f'[{int(self.env.now)}] Client_{self.pk} continues to be assigned to {self.base_station}')
-            return
+            return False
 
         if self.base_station is None:
             self.base_station = next_bs
             self.log(f'[{int(self.env.now)}] Client_{self.pk} freshly assigned to {self.base_station}')
-            return
+            return False
+
+        if self.connected:
+            self.log(f'[{int(self.env.now)}] Client_{self.pk} disconnecting from {self.base_station.pk}')
+            self.disconnect()
 
         if next_bs is None:
             self.log(f'[{int(self.env.now)}] Client_{self.pk} could not assigned to any base station')
-            self.stat_collector.incr_out_of_coverage_count(self)
+            self.stat_collector.incr_drop_count(self)
             self.base_station = next_bs
-            return
+            return False
 
         # handover happens here.
-        if self.connected:
-            self.log(f'[{int(self.env.now)}] Client_{self.pk} disconnecting...')
-            self.disconnect()
-
         self.log(f'[{int(self.env.now)}] Client_{self.pk} assigned to {next_bs} after handover.')
         self.base_station = next_bs
         self.stat_collector.incr_handover_count(self)
+        return True
 
     def is_all_remaining_usages_zero(self):
         for _, v in self.usage_remaining.items():
@@ -121,7 +125,7 @@ class Client:
         """
 
         # .00: Lock
-        self.assign_optimal_base_station()
+        handover_performed = self.assign_optimal_base_station()
 
         if self.base_station is not None:
             if not self.is_all_remaining_usages_zero():
@@ -129,7 +133,7 @@ class Client:
                 if self.connected:
                     self.start_consume()
                 else:
-                    self.connect()
+                    self.connect(handover_performed)
             else:
                 if self.connected:
                     self.disconnect()
@@ -201,7 +205,7 @@ class Client:
                 return False
         return True
 
-    def connect(self):
+    def connect(self, handover_performed=False):
         if self.connected:
             return
         slices = self.get_slices()
@@ -216,7 +220,8 @@ class Client:
                 f' @ {self.base_station}')
             return True
         else:
-            """
+            """ from the old version of SliceSim:
+            
             self.assign_closest_base_station(exclude=[self.base_station.pk])
             if self.base_station is not None and self.get_slice().is_available():
                 # handover
@@ -226,8 +231,12 @@ class Client:
                 self.stat_collector.incr_block_count(self)
             else:
                 pass  # uncovered
+                
             """
-            self.stat_collector.incr_block_count(self)
+            if handover_performed:
+                self.stat_collector.incr_drop_count(self)
+            else:
+                self.stat_collector.incr_block_count(self)
             self.log(
                 f'[{int(self.env.now)}] Client_{self.pk} [{self.x}, {self.y}] connection refused to '
                 f'slices={[s.name for s in slices]} @ {self.base_station}')
