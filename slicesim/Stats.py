@@ -147,7 +147,7 @@ class Stats:
         p("Client Coverage Ratios\t", self.coverage_ratio)
         p("Blocked Clients Count\t", self.block_count)
         p("Client Handover Count\t", self.handover_count)
-        p("Out of coverage Count\t", self.drop_count)
+        p("Drop Count Rate\t", self.drop_count)
         print('-' * 60)
 
     def print_detailed_slice_load_stats(self):
@@ -157,7 +157,7 @@ class Stats:
             print('-' * 10, "BS:", bs, '-' * 10)
             for slice_name, load_list in slice_meta.items():
                 res = [f'{elem:.2f}' for elem in load_list]
-                print(f'[{slice_name}]\t Mean: {np.mean(load_list):.4f}, Dev: {np.std(load_list):.4f}, Values: {res}')
+                print(f'[{slice_name}]\t Mean: {np.mean(load_list):.4f}, Dev: {np.std(load_list):.4f}, Values: {"res"}')
         print('-' * 60)
 
     def print_per_slice_stats(self):
@@ -168,5 +168,5 @@ class Stats:
                 slices[slice_name].append(np.mean(load_list))
         for k, v in slices.items():
             res = [f'{elem:.8f}' for elem in v]
-            print(f'[{k}]:\tMean: {np.mean(v):.4f}, Dev: {np.std(v):.4f}, Values: {res}')
+            print(f'[{k}]:\tMean: {np.mean(v):.4f}, Dev: {np.std(v):.4f}, Values: {"res"}')
         print('-' * 60)

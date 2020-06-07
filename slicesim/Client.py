@@ -3,7 +3,7 @@ import numpy as np
 import os
 from .utils import distance, KDTree
 
-PER_SLICE_THRESHOLD = 0.7
+PER_SLICE_THRESHOLD = 0.6
 HAND_OVER_LOAD_MARGIN = 0.05
 
 
@@ -199,7 +199,7 @@ class Client:
     def is_bs_available(self):
         for sl in self.get_slices():
             if self.usage_remaining[sl.index] > 0 and not sl.is_available():
-                print(f'[{int(self.env.now)}] Client_{self.pk} is blocked at bs {self.base_station} for slice {sl.name} '
+                self.log(f'[{int(self.env.now)}] Client_{self.pk} is blocked at bs {self.base_station} for slice {sl.name} '
                       f'and its load={sl.get_load()}, its availability={sl.is_available()}')
                 sl.print_stats()
                 return False

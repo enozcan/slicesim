@@ -1,10 +1,10 @@
 settings:
   simulation_time: 200
-  num_clients: 3000
+  num_clients: 10000
   limit_closest_base_stations: 5
   statistics_params:
-    warmup_ratio: 0.05
-    cooldown_ratio: 0.05
+    warmup_ratio: 0.02
+    cooldown_ratio: 0.02
     x:
       min: 0
       max: 1980
@@ -13,15 +13,12 @@ settings:
       max: 1980
   logging: True
   log_stat_only: True
-  #log_file: output_lb.txt
-  #load_balance_handover: True
-  log_file: output_available_fixed.txt
-  load_balance_handover: True
+  log_file: final_results_non_lb.txt
+  load_balance_handover: False
   plotting_params:
     plotting: False
     plot_save: False
     plot_show: False
-    #plot_file: output_lb.png
     plot_file: output_non_lb.png
     plot_file_dpi: 1000
     scatter_size: 15
@@ -323,8 +320,8 @@ base_stations:
       x_mMTC: 0.03
       x_voice: 0.07
       y_eMBB: 0.35
-      y_eMBB_p: 0.5
-      y_voice: 0.6
+      y_eMBB_p: 0.05
+      y_voice: 0.06
     x: 1538
     y: 26
   - capacity_bandwidth: 10000000000
@@ -339,7 +336,7 @@ base_stations:
       y_voice: 0.1
     x: 1448
     y: 1456
-  - capacity_bandwidth: 50
+  - capacity_bandwidth: 1000000000000
     coverage: 736
     ratios:
       x_URLLC: 0.01

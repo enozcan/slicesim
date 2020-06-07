@@ -33,10 +33,10 @@ class Slice:
 
     def print_stats(self):
         real_cap = min(self.init_capacity, self.bandwidth_max)
-        print("init cap:", self.init_capacity, "bandwidth_max", self.bandwidth_max)
+        # print("init cap:", self.init_capacity, "bandwidth_max", self.bandwidth_max)
         bandwidth_next = real_cap / (self.connected_users + 1)
-        print("bandwidth_next", bandwidth_next, "bandwidth_guaranteed", self.bandwidth_guaranteed)
-        print("connected users:", self.connected_users)
+        # print("bandwidth_next", bandwidth_next, "bandwidth_guaranteed", self.bandwidth_guaranteed)
+        # print("connected users:", self.connected_users)
 
     def get_load(self):
         return 1.0 - (self.capacity.level / self.capacity.capacity)
