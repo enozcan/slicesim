@@ -1,17 +1,16 @@
 import random
 import numpy as np
 import os
-from .utils import distance, KDTree
+from .utils import distance, KDTree, LoadBalanceType
 
 PER_SLICE_THRESHOLD = 0.6
 HAND_OVER_LOAD_MARGIN = 0.05
-
 
 class Client:
     def __init__(self, pk, env, x, y, mobility_pattern,
                  usage_freq,
                  subscribed_slice_indices, stat_collector,
-                 base_station=None, lb_handover=True):
+                 lb_handover_type, base_station=None):
         self.pk = pk
         self.env = env
         self.x = x
@@ -40,36 +39,79 @@ class Client:
         # print(self.usage_freq)
 
         self.suppress_log = True if os.environ["SLICE_SIM_LOG_STAT_ONLY"] is "1" else False
-        self.lb_handover = lb_handover
+        self.lb_handover_type = lb_handover_type
 
-    def skip_lb_handover(self, max_current_load, max_candidate_load):
-        return (not self.lb_handover) or \
-               max_current_load < PER_SLICE_THRESHOLD or \
-               max_candidate_load > (max_current_load - HAND_OVER_LOAD_MARGIN)
+    def get_slice_balance_load(self, station):
+        """
+        Returns the load level of a given station considering only the slices used by this client.
+        The returned value might differ according to the handover logic.
+        For instance, in LoadBalanceType.max, the maximum load of these slices are returned.
+        :param station: Base station of load to be calculated
+        :return: Load value according to load balance logic
+        """
+        if self.lb_handover_type is LoadBalanceType.disabled:
+            return -1  # ignored
+        elif self.lb_handover_type is LoadBalanceType.max:
+            return max([s.get_load() for s in np.asarray(station.slices)[self.subscribed_slice_indices]])
+        elif self.lb_handover_type is LoadBalanceType.mean:
+            return np.mean([s.get_load() for s in np.asarray(station.slices)[self.subscribed_slice_indices]])
+        else:
+            raise NotImplementedError
+
+    def get_current_lb_load(self):
+        """
+        Calculates the currently connected base station's slice load considering only the slices
+        used by this client.
+        :return: Load value according to load balance logic
+        """
+        current_slice_loads = [s.get_load() for s in self.get_slices()] if self.base_station is not None else []
+        if self.lb_handover_type is LoadBalanceType.disabled:
+            return -1  # ignored
+        elif self.lb_handover_type is LoadBalanceType.max:
+            return max(current_slice_loads) if len(current_slice_loads) is not 0 else -1
+        elif self.lb_handover_type is LoadBalanceType.mean:
+            return np.mean(current_slice_loads) if len(current_slice_loads) is not 0 else -1
+        else:
+            raise NotImplementedError
+
+    def should_skip_lb_handover(self, current_load, candidate_load):
+        """
+        Decides if this client should handover in the next iteration or not.
+        :param current_load: result of self.get_current_lb_load
+        :param candidate_load: result of get_slice_balance_load for a candidate base station
+        :return: True if handover should be performed, False otherwise
+        """
+        if self.lb_handover_type is LoadBalanceType.disabled:
+            return True  # do not attempt to make load balance. Skip directly
+        elif self.lb_handover_type is LoadBalanceType.max or LoadBalanceType.mean:
+            return current_load < PER_SLICE_THRESHOLD or \
+                   candidate_load > (current_load - HAND_OVER_LOAD_MARGIN)
+        else:
+            raise NotImplementedError
 
     def get_next_base_station(self):
+        """
+        Applies handover logic and chooses a base station among available ones including the current one
+        :return: Base station to be connected inn the next time unit. Might be None or the same as the current one.
+        """
         in_coverage = self.base_station is not None and self.base_station.coverage.is_in_coverage(self.x, self.y)
-        current_slice_loads = [s.get_load() for s in self.get_slices()] if self.base_station is not None else []
-        max_current_load = max(current_slice_loads) if len(current_slice_loads) is not 0 else -1
-
-        def get_max_slice_load(station):
-            return max([s.get_load() for s in np.asarray(station.slices)[self.subscribed_slice_indices]])
+        current_load = self.get_current_lb_load()
 
         st = self.get_candidate_base_stations(exclude=[self.base_station.pk] if self.base_station is not None else [])
-        st.sort(key=lambda x: get_max_slice_load(x[1]))  # TODO: Pass lambda as param for distinct mechanisms
+        st.sort(key=lambda x: self.get_slice_balance_load(x[1]))  # TODO: Pass lambda as param for distinct mechanisms
+        candidate_load = self.get_slice_balance_load(st[0][1]) if len(st) > 0 else 1
 
-        max_candidate_load = get_max_slice_load(st[0][1]) if len(st) > 0 else 1
-
-        if in_coverage and self.skip_lb_handover(max_current_load, max_candidate_load):
+        if in_coverage and self.should_skip_lb_handover(current_load, candidate_load):
             return self.base_station
 
-        self.log(f'[{int(self.env.now)}] Client_{self.pk} old load was {max_current_load} at '
+        self.log(f'[{int(self.env.now)}] Client_{self.pk} old load was {current_load} at '
                  f'BS:{self.base_station.pk if self.base_station is not None else None}, '
-                 f'new load is {max_candidate_load} at BS:{st[0][1].pk if len(st) > 0 else None}')
+                 f'new load is {candidate_load} at BS:{st[0][1].pk if len(st) > 0 else None}')
         return st[0][1] if len(st) > 0 else None
 
     def assign_optimal_base_station(self):
         """
+        Assigns the optimal base station after handover logic is applied.
         :return: True if handover is performed, False otherwise
         """
 

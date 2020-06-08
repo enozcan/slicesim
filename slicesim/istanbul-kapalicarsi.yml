@@ -13,8 +13,9 @@ settings:
       max: 1980
   logging: True
   log_stat_only: True
-  log_file: final_results_15k_lb.txt
-  load_balance_handover: True
+  log_file: dummy.txt
+  load_balance_type: mean  # max, mean, disabled
+  seed: 7
   plotting_params:
     plotting: False
     plot_save: False

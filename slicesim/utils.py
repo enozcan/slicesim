@@ -1,6 +1,13 @@
 import math
+from enum import Enum
 
 from sklearn.neighbors import KDTree as kdt
+
+
+class LoadBalanceType(Enum):
+    disabled = 0
+    max = 1
+    mean = 2
 
 
 def distance(a, b):
