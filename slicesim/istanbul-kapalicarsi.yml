@@ -1,7 +1,7 @@
 settings:
   simulation_time: 50
   num_clients: 15000
-  limit_closest_base_stations: 5
+  limit_closest_base_stations: 8
   statistics_params:
     warmup_ratio: 0.02
     cooldown_ratio: 0.02
@@ -13,14 +13,14 @@ settings:
       max: 1980
   logging: True
   log_stat_only: True
-  log_file: dummy.txt
-  load_balance_type: mean  # max, mean, disabled
+  log_file: disabled.txt
+  load_balance_type: disabled  # max, mean, disabled
   seed: 7
   plotting_params:
-    plotting: False
-    plot_save: False
+    plotting: True
+    plot_save: True
     plot_show: False
-    plot_file: output_non_lb.png
+    plot_file: disabled.png
     plot_file_dpi: 1000
     scatter_size: 15
 slices:

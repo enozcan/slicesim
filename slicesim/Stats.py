@@ -40,6 +40,7 @@ class Stats:
             self.coverage_ratio,
             self.block_count_ratio,
             self.handover_count_ratio,
+            self.drop_count_ratio,
         )
 
     def collect(self):
@@ -148,14 +149,19 @@ class Stats:
     def get_per_slice_stats(self):
         res = {}
         slices = defaultdict(lambda: [])
+        load_per_time = defaultdict(lambda: np.asarray([]))
         for bs, slice_meta in self.load_stats.items():
             for slice_name, load_list in slice_meta.items():
                 slices[slice_name].append(np.mean(load_list))
+                if len(load_per_time[slice_name]) is 0:
+                    load_per_time[slice_name] = load_list
+                else:
+                    load_per_time[slice_name] = (np.asarray(load_per_time[slice_name]) + np.asarray(load_list)) / 2
         for k, v in slices.items():
-            res[k] = (np.mean(v), np.std(v))
+            res[k] = (np.mean(v), np.std(v), v)
             # series = [f'{elem:.8f}' for elem in v]
             # print(f'[{k}]:\tMean: {np.mean(v):.4f}, Dev: {np.std(v):.4f}, Values: {series}')
-        return res
+        return res, load_per_time
 
     def print_detailed_slice_load_stats(self):
         print('-' * 20, "Station Load Stats", '-' * 20)

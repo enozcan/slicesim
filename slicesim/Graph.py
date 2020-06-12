@@ -5,6 +5,7 @@ import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter, FuncFormatter
 import randomcolor
+import random
 
 from .utils import format_bps
 
@@ -15,7 +16,7 @@ def show_plot():
 
 class Graph:
     def __init__(self, base_stations, clients, xlim, map_limits,
-                 output_dpi=500, scatter_size=15, output_filename='output.png'):
+                 output_dpi=500, scatter_size=30, output_filename='output.png'):
         self.output_filename = output_filename
         self.base_stations = base_stations
         self.clients = clients
@@ -23,10 +24,10 @@ class Graph:
         self.map_limits = map_limits
         self.output_dpi = output_dpi
         self.scatter_size = scatter_size
-        self.fig = plt.figure(figsize=(16, 9))
+        self.fig = plt.figure(figsize=(32, 24))
         self.fig.canvas.set_window_title('Network Slicing Simulation')
 
-        self.gs = gridspec.GridSpec(4, 3, width_ratios=[6, 3, 3])
+        self.gs = gridspec.GridSpec(4, 4, width_ratios=[3, 3, 3, 3])
 
         rand_color = randomcolor.RandomColor()
         colors = rand_color.generate(luminosity='bright', count=len(base_stations))
@@ -39,9 +40,30 @@ class Graph:
         ani = animation.FuncAnimation(self.fig, self.draw_all, fargs=stats, interval=1000)
         plt.show()
 
-    def draw_all(self, *stats):
+    def draw_slice_stats(self, slice_load_series):
+        """
+        Draws averaged slice loads (for all base stations).
+        @note   Grid is assumed to be 4x4 and this method occupies the first 2 column.
+        :param slice_load_series: Dict: { slice_name -> [avg loads per time unit] }
+        """
+        slice_names = list(slice_load_series.keys())
+        for i in range(4):
+            for j in range(2):
+                if len(slice_names) is 0:
+                    return
+                current_slice = slice_names.pop()
+                ax = plt.subplot(self.gs[i, j])
+                ax.plot(slice_load_series[current_slice])
+                ax.set_xlim(self.xlim)
+                ax.set_ylim([0, 1])  # this may yield dummy graphs when load is too low.
+                ax.use_sticky_edges = False
+                ax.set_title(f'Avg {current_slice} loads')
+        return
+
+    def draw_all(self, stats, slice_load_series):
         plt.clf()
-        self.draw_map()
+        # self.draw_map()
+        self.draw_slice_stats(slice_load_series)
         self.draw_stats(*stats)
 
     def draw_stations_own_slice(self, connection_matrix, slice_name):
@@ -93,16 +115,17 @@ class Graph:
             self.ax.add_artist(circle)
 
         # clients
-        legend_indexed = []
+        # legend_indexed = []
         for c in self.clients:
             label = None
-            if c.subscribed_slice_index not in legend_indexed and c.base_station is not None:
-                label = c.get_slice().name
-                legend_indexed.append(c.subscribed_slice_index)
+            #if c.subscribed_slice_index not in legend_indexed and c.base_station is not None:
+            #    label = c.get_slice().name
+            #    legend_indexed.append(c.subscribed_slice_index)
             self.ax.scatter(c.x, c.y,
                             color=c.base_station.color if c.base_station is not None else '0.8',
                             label=label, s=15,
-                            marker=markers[c.subscribed_slice_index % len(markers)])
+                            #marker=markers[c.subscribed_slice_index % len(markers)])
+                            marker=markers[0])
 
         box = self.ax.get_position()
         self.ax.set_position([box.x0 - box.width * 0.05, box.y0 + box.height * 0.1, box.width, box.height * 0.9])
@@ -110,11 +133,11 @@ class Graph:
         leg = self.ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
                              shadow=True, ncol=5)
 
-        for i in range(len(legend_indexed)):
-            leg.legendHandles[i].set_color('k')
+        #for i in range(len(legend_indexed)):
+        #    leg.legendHandles[i].set_color('k')
 
-    def draw_stats(self, vals, vals1, vals2, vals3, vals4, vals5, vals6):
-        self.ax1 = plt.subplot(self.gs[0, 1])
+    def draw_stats(self, vals, vals1, vals2, vals3, vals4, vals5, vals6, vals7):
+        self.ax1 = plt.subplot(self.gs[0, 2])
         self.ax1.plot(vals)
         self.ax1.set_xlim(self.xlim)
         locs = self.ax1.get_xticks()
@@ -124,7 +147,7 @@ class Graph:
         self.ax1.use_sticky_edges = False
         self.ax1.set_title(f'Connected Clients Ratio')
 
-        self.ax2 = plt.subplot(self.gs[1, 1])
+        self.ax2 = plt.subplot(self.gs[1, 2])
         self.ax2.plot(vals1)
         self.ax2.set_xlim(self.xlim)
         self.ax2.set_xticks(locs)
@@ -132,28 +155,28 @@ class Graph:
         self.ax2.use_sticky_edges = False
         self.ax2.set_title('Total Bandwidth Usage')
 
-        self.ax3 = plt.subplot(self.gs[2, 1])
+        self.ax3 = plt.subplot(self.gs[2, 2])
         self.ax3.plot(vals2)
         self.ax3.set_xlim(self.xlim)
         self.ax3.set_xticks(locs)
         self.ax3.use_sticky_edges = False
         self.ax3.set_title('Bandwidth Usage Ratio in Slices (Averaged)')
 
-        self.ax4 = plt.subplot(self.gs[3, 1])
+        self.ax4 = plt.subplot(self.gs[3, 2])
         self.ax4.plot(vals3)
         self.ax4.set_xlim(self.xlim)
         self.ax4.set_xticks(locs)
         self.ax4.use_sticky_edges = False
         self.ax4.set_title('Client Count Ratio per Slice')
 
-        self.ax5 = plt.subplot(self.gs[0, 2])
+        self.ax5 = plt.subplot(self.gs[0, 3])
         self.ax5.plot(vals4)
         self.ax5.set_xlim(self.xlim)
         self.ax5.set_xticks(locs)
         self.ax5.use_sticky_edges = False
         self.ax5.set_title('Coverage Ratio')
 
-        self.ax6 = plt.subplot(self.gs[1, 2])
+        self.ax6 = plt.subplot(self.gs[1, 3])
         self.ax6.plot(vals5)
         self.ax6.set_xlim(self.xlim)
         self.ax6.set_xticks(locs)
@@ -161,7 +184,7 @@ class Graph:
         self.ax6.use_sticky_edges = False
         self.ax6.set_title('Block ratio')
 
-        self.ax7 = plt.subplot(self.gs[2, 2])
+        self.ax7 = plt.subplot(self.gs[2, 3])
         self.ax7.plot(vals6)
         self.ax7.set_xlim(self.xlim)
         self.ax7.set_xticks(locs)
@@ -169,6 +192,15 @@ class Graph:
         self.ax7.use_sticky_edges = False
         self.ax7.set_title('Handover ratio')
 
+        self.ax8 = plt.subplot(self.gs[3, 3])
+        self.ax8.plot(vals7)
+        self.ax8.set_xlim(self.xlim)
+        self.ax8.set_xticks(locs)
+        self.ax8.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
+        self.ax8.use_sticky_edges = False
+        self.ax8.set_title('Drop ratio')
+
+        """
         self.ax8 = plt.subplot(self.gs[3, 2])
         row_labels = [
             'Initial number of clients',
@@ -194,7 +226,7 @@ class Graph:
         self.ax8.axis('tight')
         self.ax8.tick_params(axis='x', which='major', pad=15)
         self.ax8.table(cellText=cell_text, rowLabels=row_labels, colWidths=[0.35, 0.2], loc='center right')
-
+        """
         plt.tight_layout()
 
     def save_fig(self):

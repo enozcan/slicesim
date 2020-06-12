@@ -186,6 +186,8 @@ for client in clients:
 log(VERBOSE, f'Number or clients: {NUM_CLIENTS}')
 log(VERBOSE, '-' * 60)
 
+per_slice_stats = stats.get_per_slice_stats()
+
 if SETTINGS['plotting_params']['plotting']:
     xlim_left = int(SETTINGS['simulation_time'] * SETTINGS['statistics_params']['warmup_ratio'])
     xlim_right = int(SETTINGS['simulation_time'] * (1 - SETTINGS['statistics_params']['cooldown_ratio'])) + 1
@@ -195,7 +197,7 @@ if SETTINGS['plotting_params']['plotting']:
                   output_dpi=SETTINGS['plotting_params']['plot_file_dpi'],
                   scatter_size=SETTINGS['plotting_params']['scatter_size'],
                   output_filename=SETTINGS['plotting_params']['plot_file'])
-    graph.draw_all(*stats.get_stats())
+    graph.draw_all(stats.get_stats(), per_slice_stats[1])
     if SETTINGS['plotting_params']['plot_save']:
         graph.save_fig()
     if SETTINGS['plotting_params']['plot_show']:
@@ -242,7 +244,7 @@ to_mean_var(general_stats['drop_count_ratio'])
 print()
 print(50 * '-', " SLICE ", 50 * '-')
 print("Average loads of slices from all base stations. A good handover mechanism will decrease std.\n")
-for k,v in stats.get_per_slice_stats().items():
+for k,v in per_slice_stats[0].items():
     print(f'[Slice {k}] mean: {round(v[0],4)}, stdev: {round(v[1],4)}')
 
 sys.stdout = sys.__stdout__
