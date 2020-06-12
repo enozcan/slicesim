@@ -82,15 +82,22 @@ np.random.seed(RANDOM_SEED)
 env = simpy.Environment()
 
 SLICES_INFO = data['slices']
-NUM_CLIENTS = SETTINGS['num_clients']
+
+# NUM_CLIENTS = SETTINGS['num_clients']
+NUM_CLIENTS = int(os.environ['NUM_CLIENTS'])
+
 MOBILITY_PATTERNS = data['mobility_patterns']
 BASE_STATIONS = data['base_stations']
 CLIENTS = data['clients']
-LB_TYPE = LoadBalanceType[SETTINGS['load_balance_type']]
 
+# LB_TYPE = LoadBalanceType[SETTINGS['load_balance_type']]
+LB_TYPE = LoadBalanceType[os.environ['LOAD_BALANCE_TYPE']]
+
+# OUTPUT_FILE_NAME = SETTINGS['log_file']
+OUTPUT_FILE_NAME = os.environ['OUTPUT_FILE_NAME']
 
 if SETTINGS['logging']:
-    sys.stdout = open(SETTINGS['log_file'], 'wt')
+    sys.stdout = open(OUTPUT_FILE_NAME + '.txt', 'wt')
 else:
     sys.stdout = open(os.devnull, 'w')
 
@@ -196,7 +203,8 @@ if SETTINGS['plotting_params']['plotting']:
                   ((x_vals['min'], x_vals['max']), (y_vals['min'], y_vals['max'])),
                   output_dpi=SETTINGS['plotting_params']['plot_file_dpi'],
                   scatter_size=SETTINGS['plotting_params']['scatter_size'],
-                  output_filename=SETTINGS['plotting_params']['plot_file'])
+                  #output_filename=SETTINGS['plotting_params']['plot_file'])
+                  output_filename=OUTPUT_FILE_NAME + '.png')
     graph.draw_all(stats.get_stats(), per_slice_stats[1])
     if SETTINGS['plotting_params']['plot_save']:
         graph.save_fig()
@@ -248,4 +256,4 @@ for k,v in per_slice_stats[0].items():
     print(f'[Slice {k}] mean: {round(v[0],4)}, stdev: {round(v[1],4)}')
 
 sys.stdout = sys.__stdout__
-print('Simulation has ran completely and output file created to:', SETTINGS['log_file'])
+print('Simulation has ran completely and output file created to:', OUTPUT_FILE_NAME)
