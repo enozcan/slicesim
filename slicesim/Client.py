@@ -50,7 +50,7 @@ class Client:
         Returns the load level of a given station considering only the slices used by this client.
         The returned value might differ according to the handover logic.
         For instance, in LoadBalanceType.max, the maximum load of these slices are returned.
-        :param station: Base station of load to be calculated
+        :param station: Base station of which load to be calculated
         :return: Load value according to load balance logic
         """
         if self.lb_handover_type is LoadBalanceType.disabled:
@@ -62,7 +62,7 @@ class Client:
         else:
             raise NotImplementedError
 
-    def get_current_lb_load(self):
+    def get_current_bs_load(self):
         """
         Calculates the currently connected base station's slice load considering only the slices
         used by this client.
@@ -99,7 +99,7 @@ class Client:
         :return: Base station to be connected inn the next time unit. Might be None or the same as the current one.
         """
         in_coverage = self.base_station is not None and self.base_station.coverage.is_in_coverage(self.x, self.y)
-        current_load = self.get_current_lb_load()
+        current_load = self.get_current_bs_load()
 
         st = self.get_candidate_base_stations(exclude=[self.base_station.pk] if self.base_station is not None else [])
         st.sort(key=lambda x: self.get_slice_balance_load(x[1]))  # TODO: Pass lambda as param for distinct mechanisms
