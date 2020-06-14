@@ -15,6 +15,8 @@ settings:
   log_stat_only: True
   log_file: disabled.txt
   load_balance_type: disabled  # max, mean, disabled
+  load_balance_threshold: 0.6
+  load_balance_margin: 0.05
   seed: 7
   plotting_params:
     plotting: True

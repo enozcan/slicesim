@@ -3,14 +3,16 @@ import numpy as np
 import os
 from .utils import distance, KDTree, LoadBalanceType
 
-PER_SLICE_THRESHOLD = 0.6
-HAND_OVER_LOAD_MARGIN = 0.05
+DEFAULT_PER_SLICE_THRESHOLD = 0.6
+DEFAULT_HAND_OVER_LOAD_MARGIN = 0.05
+
 
 class Client:
     def __init__(self, pk, env, x, y, mobility_pattern,
                  usage_freq,
                  subscribed_slice_indices, stat_collector,
-                 lb_handover_type, base_station=None):
+                 lb_handover_type, lb_threshold=DEFAULT_PER_SLICE_THRESHOLD,
+                 lb_margin=DEFAULT_HAND_OVER_LOAD_MARGIN, base_station=None):
         self.pk = pk
         self.env = env
         self.x = x
@@ -40,6 +42,8 @@ class Client:
 
         self.suppress_log = True if os.environ["SLICE_SIM_LOG_STAT_ONLY"] is "1" else False
         self.lb_handover_type = lb_handover_type
+        self.lb_threshold = lb_threshold
+        self.lb_margin = lb_margin
 
     def get_slice_balance_load(self, station):
         """
@@ -84,8 +88,8 @@ class Client:
         if self.lb_handover_type is LoadBalanceType.disabled:
             return True  # do not attempt to make load balance. Skip directly
         elif self.lb_handover_type is LoadBalanceType.max or LoadBalanceType.mean:
-            return current_load < PER_SLICE_THRESHOLD or \
-                   candidate_load > (current_load - HAND_OVER_LOAD_MARGIN)
+            return current_load < self.lb_threshold or \
+                   candidate_load > (current_load - self.lb_margin)
         else:
             raise NotImplementedError
 

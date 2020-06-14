@@ -87,6 +87,8 @@ MOBILITY_PATTERNS = data['mobility_patterns']
 BASE_STATIONS = data['base_stations']
 CLIENTS = data['clients']
 LB_TYPE = LoadBalanceType[SETTINGS['load_balance_type']]
+LB_THRESHOLD = SETTINGS['load_balance_threshold']
+LB_MARGIN = SETTINGS['load_balance_margin']
 
 
 if SETTINGS['logging']:
@@ -159,7 +161,8 @@ for i in range(NUM_CLIENTS):
     mobility_pattern = get_random_mobility_pattern(mb_weights, mobility_patterns)
     connected_slice_indices = get_random_slice_indices(slice_weights)
     c = Client(i, env, location_x, location_y,
-               mobility_pattern, usage_freq_pattern.generate_scaled(), connected_slice_indices, stats, LB_TYPE)
+               mobility_pattern, usage_freq_pattern.generate_scaled(), connected_slice_indices, stats, LB_TYPE,
+               lb_threshold=LB_THRESHOLD, lb_margin=LB_MARGIN)
     clients.append(c)
 
 KDTree.limit = SETTINGS['limit_closest_base_stations']
